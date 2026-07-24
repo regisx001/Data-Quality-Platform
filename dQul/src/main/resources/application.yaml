@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: dQul
+
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: ${DATABASE_DRIVER}
+
+  jdbc:
+    template:
+      query-timeout: 30
+
+server:
+  port: 7000
