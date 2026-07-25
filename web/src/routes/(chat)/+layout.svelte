@@ -28,7 +28,7 @@
                 </Breadcrumb.List>
             </Breadcrumb.Root>
         </header>
-        <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div class="flex flex-1 flex-col overflow-hidden min-h-0">
             {@render children?.()}
         </div>
     </Sidebar.Inset>

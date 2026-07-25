@@ -168,53 +168,66 @@
     });
 </script>
 
-<Conversation.Root class="relative h-full w-3xl mx-auto">
-    <Conversation.Content class="gap-4">
-        {#if visibleMessages.length === 0}
-            <Conversation.EmptyState
-                description="Messages will appear here as the conversation progresses."
-                title="Start a conversation"
-            >
-                {#snippet icon()}
-                    <MessageSquare class="size-6" />
-                {/snippet}
-            </Conversation.EmptyState>
-        {:else}
-            {#each visibleMessages as messageData, index (messageData.key)}
-                <Message.Root from={index % 2 === 0 ? "user" : "assistant"}>
-                    <Message.Content>{messageData.value}</Message.Content>
-                </Message.Root>
-            {/each}
-        {/if}
-    </Conversation.Content>
-    <!-- <Conversation.ScrollButton /> -->
-</Conversation.Root>
-
-<PromptInput.Root
-    class="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl"
-    onSubmit={handleSubmit}
->
-    <PromptInput.Body>
-        <PromptInput.Textarea />
-    </PromptInput.Body>
-    <PromptInput.Toolbar>
-        <Select.Root type="single" bind:value={selectedModel}>
-            <Select.Trigger class="border-none">
-                {#if selectedModel}
-                    {models.find((model) => model.name === selectedModel)
-                        ?.label}
+<!-- Page is a flex column: messages scroll, composer is pinned at the bottom -->
+<div class="flex flex-1 flex-col overflow-hidden min-h-0">
+    <!-- Scrollable messages area -->
+    <div class="flex-1 overflow-y-auto min-h-0 px-4 pt-4">
+        <Conversation.Root style="height: auto" class="w-[52rem] mx-auto">
+            <Conversation.Content class="gap-4">
+                {#if visibleMessages.length === 0}
+                    <Conversation.EmptyState
+                        description="Messages will appear here as the conversation progresses."
+                        title="Start a conversation"
+                    >
+                        {#snippet icon()}
+                            <MessageSquare class="size-6" />
+                        {/snippet}
+                    </Conversation.EmptyState>
                 {:else}
-                    Select Model
+                    {#each visibleMessages as messageData, index (messageData.key)}
+                        <Message.Root
+                            from={index % 2 === 0 ? "user" : "assistant"}
+                        >
+                            <Message.Content
+                                >{messageData.value}</Message.Content
+                            >
+                        </Message.Root>
+                    {/each}
                 {/if}
-            </Select.Trigger>
-            <Select.Content align="start">
-                {#each models as model (model.name)}
-                    <Select.Item value={model.name} label={model.label}>
-                        {model.label}
-                    </Select.Item>
-                {/each}
-            </Select.Content>
-        </Select.Root>
-        <PromptInput.Submit onStop={handleStop} />
-    </PromptInput.Toolbar>
-</PromptInput.Root>
+            </Conversation.Content>
+            <Conversation.ScrollButton />
+        </Conversation.Root>
+    </div>
+
+    <!-- Composer: pinned to bottom, never pushed by messages -->
+    <div class="shrink-0 border-t bg-background/80 backdrop-blur-md p-4">
+        <div class="w-full max-w-3xl mx-auto">
+            <PromptInput.Root onSubmit={handleSubmit}>
+                <PromptInput.Body>
+                    <PromptInput.Textarea />
+                </PromptInput.Body>
+                <PromptInput.Toolbar>
+                    <Select.Root type="single" bind:value={selectedModel}>
+                        <Select.Trigger class="border-none">
+                            {#if selectedModel}
+                                {models.find(
+                                    (model) => model.name === selectedModel,
+                                )?.label}
+                            {:else}
+                                Select Model
+                            {/if}
+                        </Select.Trigger>
+                        <Select.Content align="start">
+                            {#each models as model (model.name)}
+                                <Select.Item value={model.name} label={model.label}>
+                                    {model.label}
+                                </Select.Item>
+                            {/each}
+                        </Select.Content>
+                    </Select.Root>
+                    <PromptInput.Submit onStop={handleStop} />
+                </PromptInput.Toolbar>
+            </PromptInput.Root>
+        </div>
+    </div>
+</div>
