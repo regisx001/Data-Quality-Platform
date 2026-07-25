@@ -196,7 +196,7 @@
     <!-- Prompt snippet injected into container -->
     {#snippet prompt()}
         <div class="w-full max-w-3xl mx-auto">
-            <PromptInput.Root onSubmit={handleSubmit}>
+            <PromptInput.Root class="p-2" onSubmit={handleSubmit}>
                 <PromptInput.Body>
                     <PromptInput.Textarea />
                 </PromptInput.Body>
