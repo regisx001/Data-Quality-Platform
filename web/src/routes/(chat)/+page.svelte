@@ -2,6 +2,7 @@
     import * as PromptInput from "$lib/components/ai-elements/prompt-input";
     // import { type Message } from "$lib/components/ai-elements/prompt-input";
     import * as Select from "$lib/components/ui/select/index.js";
+    import ChatContainer from "$lib/components/chat/chat-container.svelte";
     // import { Chat } from "@ai-sdk/svelte";
 
     // This are from OpenRouter : https://openrouter.ai/models
@@ -107,7 +108,7 @@
         {
             key: crypto.randomUUID(),
             value: "You can sign up on our website and get an API key instantly.",
-            name: "AI Assistant",
+            name: "Alex Johnson",
         },
         {
             key: crypto.randomUUID(),
@@ -168,39 +169,32 @@
     });
 </script>
 
-<!-- Page is a flex column: messages scroll, composer is pinned at the bottom -->
-<div class="flex flex-1 flex-col overflow-hidden min-h-0">
-    <!-- Scrollable messages area -->
-    <div class="flex-1 overflow-y-auto min-h-0 px-4 pt-4">
-        <Conversation.Root style="height: auto" class="w-[52rem] mx-auto">
-            <Conversation.Content class="gap-4">
-                {#if visibleMessages.length === 0}
-                    <Conversation.EmptyState
-                        description="Messages will appear here as the conversation progresses."
-                        title="Start a conversation"
-                    >
-                        {#snippet icon()}
-                            <MessageSquare class="size-6" />
-                        {/snippet}
-                    </Conversation.EmptyState>
-                {:else}
-                    {#each visibleMessages as messageData, index (messageData.key)}
-                        <Message.Root
-                            from={index % 2 === 0 ? "user" : "assistant"}
-                        >
-                            <Message.Content
-                                >{messageData.value}</Message.Content
-                            >
-                        </Message.Root>
-                    {/each}
-                {/if}
-            </Conversation.Content>
-            <Conversation.ScrollButton />
-        </Conversation.Root>
-    </div>
+<ChatContainer>
+    <!-- Implicit children snippet (Conversation content) -->
+    <Conversation.Root style="height: auto" class="w-[52rem] mx-auto">
+        <Conversation.Content class="gap-4">
+            {#if visibleMessages.length === 0}
+                <Conversation.EmptyState
+                    description="Messages will appear here as the conversation progresses."
+                    title="Start a conversation"
+                >
+                    {#snippet icon()}
+                        <MessageSquare class="size-6" />
+                    {/snippet}
+                </Conversation.EmptyState>
+            {:else}
+                {#each visibleMessages as messageData, index (messageData.key)}
+                    <Message.Root from={index % 2 === 0 ? "user" : "assistant"}>
+                        <Message.Content>{messageData.value}</Message.Content>
+                    </Message.Root>
+                {/each}
+            {/if}
+        </Conversation.Content>
+        <Conversation.ScrollButton />
+    </Conversation.Root>
 
-    <!-- Composer: pinned to bottom, never pushed by messages -->
-    <div class="shrink-0 border-t bg-background/80 backdrop-blur-md p-4">
+    <!-- Prompt snippet injected into container -->
+    {#snippet prompt()}
         <div class="w-full max-w-3xl mx-auto">
             <PromptInput.Root onSubmit={handleSubmit}>
                 <PromptInput.Body>
@@ -219,7 +213,10 @@
                         </Select.Trigger>
                         <Select.Content align="start">
                             {#each models as model (model.name)}
-                                <Select.Item value={model.name} label={model.label}>
+                                <Select.Item
+                                    value={model.name}
+                                    label={model.label}
+                                >
                                     {model.label}
                                 </Select.Item>
                             {/each}
@@ -229,5 +226,5 @@
                 </PromptInput.Toolbar>
             </PromptInput.Root>
         </div>
-    </div>
-</div>
+    {/snippet}
+</ChatContainer>
