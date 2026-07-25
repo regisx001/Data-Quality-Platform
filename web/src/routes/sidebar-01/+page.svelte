@@ -1,5 +1,5 @@
 <script lang="ts">
-	import AppSidebar from "$lib/components/app-sidebar.svelte";
+	import AppSidebar from "$lib/components/chat/chat-sidebar.svelte";
 	import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
 	import { Separator } from "$lib/components/ui/separator/index.js";
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
@@ -14,7 +14,9 @@
 			<Breadcrumb.Root>
 				<Breadcrumb.List>
 					<Breadcrumb.Item class="hidden md:block">
-						<Breadcrumb.Link href="##">Build Your Application</Breadcrumb.Link>
+						<Breadcrumb.Link href="##"
+							>Build Your Application</Breadcrumb.Link
+						>
 					</Breadcrumb.Item>
 					<Breadcrumb.Separator class="hidden md:block" />
 					<Breadcrumb.Item>
@@ -29,7 +31,9 @@
 				<div class="bg-muted/50 aspect-video rounded-xl"></div>
 				<div class="bg-muted/50 aspect-video rounded-xl"></div>
 			</div>
-			<div class="bg-muted/50 min-h-screen flex-1 rounded-xl md:min-h-min"></div>
+			<div
+				class="bg-muted/50 min-h-screen flex-1 rounded-xl md:min-h-min"
+			></div>
 		</div>
 	</Sidebar.Inset>
 </Sidebar.Provider>

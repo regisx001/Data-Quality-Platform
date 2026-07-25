@@ -168,7 +168,7 @@
     });
 </script>
 
-<Conversation.Root class="h-full w-2xl mx-auto">
+<Conversation.Root class="relative h-full w-3xl mx-auto">
     <Conversation.Content class="gap-4">
         {#if visibleMessages.length === 0}
             <Conversation.EmptyState
@@ -187,30 +187,34 @@
             {/each}
         {/if}
     </Conversation.Content>
-    <Conversation.ScrollButton />
-    <PromptInput.Root class="w-xl" onSubmit={handleSubmit}>
-        <PromptInput.Body>
-            <PromptInput.Textarea />
-        </PromptInput.Body>
-        <PromptInput.Toolbar>
-            <Select.Root type="single" bind:value={selectedModel}>
-                <Select.Trigger class="border-none">
-                    {#if selectedModel}
-                        {models.find((model) => model.name === selectedModel)
-                            ?.label}
-                    {:else}
-                        Select Model
-                    {/if}
-                </Select.Trigger>
-                <Select.Content align="start">
-                    {#each models as model (model.name)}
-                        <Select.Item value={model.name} label={model.label}>
-                            {model.label}
-                        </Select.Item>
-                    {/each}
-                </Select.Content>
-            </Select.Root>
-            <PromptInput.Submit onStop={handleStop} />
-        </PromptInput.Toolbar>
-    </PromptInput.Root>
+    <!-- <Conversation.ScrollButton /> -->
 </Conversation.Root>
+
+<PromptInput.Root
+    class="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl"
+    onSubmit={handleSubmit}
+>
+    <PromptInput.Body>
+        <PromptInput.Textarea />
+    </PromptInput.Body>
+    <PromptInput.Toolbar>
+        <Select.Root type="single" bind:value={selectedModel}>
+            <Select.Trigger class="border-none">
+                {#if selectedModel}
+                    {models.find((model) => model.name === selectedModel)
+                        ?.label}
+                {:else}
+                    Select Model
+                {/if}
+            </Select.Trigger>
+            <Select.Content align="start">
+                {#each models as model (model.name)}
+                    <Select.Item value={model.name} label={model.label}>
+                        {model.label}
+                    </Select.Item>
+                {/each}
+            </Select.Content>
+        </Select.Root>
+        <PromptInput.Submit onStop={handleStop} />
+    </PromptInput.Toolbar>
+</PromptInput.Root>
