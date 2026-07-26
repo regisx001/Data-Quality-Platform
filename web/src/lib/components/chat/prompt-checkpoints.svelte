@@ -40,7 +40,7 @@
 		{#if !isRailHovered}
 			<!-- FIRST VIEW: Minimalist vertical tick marks rail (Default un-hovered state) -->
 			<div
-				class="flex flex-col items-end gap-2.5 py-3 px-1.5 rounded-full bg-background/50 backdrop-blur-md border border-border/40 shadow-xs animate-in fade-in duration-200 cursor-pointer"
+				class="flex flex-col items-end gap-2.5 py-3 px-1.5 rounded-full bg-background/80 backdrop-blur-md border border-border/60 shadow-xs animate-in fade-in duration-200 cursor-pointer"
 			>
 				{#each checkpoints as cp (cp.id)}
 					{@const isActive = activeId === cp.id}
@@ -51,16 +51,16 @@
 						class={cn(
 							"h-1.5 rounded-full transition-all duration-200 cursor-pointer",
 							isActive
-								? "w-6 bg-primary shadow-[0_0_8px_rgba(59,130,246,0.6)]"
-								: "w-2.5 bg-muted-foreground/40 hover:w-4 hover:bg-muted-foreground/80"
+								? "w-6 bg-primary shadow-xs"
+								: "w-2.5 bg-muted-foreground/40 hover:w-4 hover:bg-muted-foreground"
 						)}
 					/>
 				{/each}
 			</div>
 		{:else}
-			<!-- SECOND VIEW: Full dark outline menu panel (In-place highlight on hover, no left translation) -->
+			<!-- SECOND VIEW: Full outline menu panel (shadcn popover tokens, in-place highlight on hover) -->
 			<div
-				class="flex flex-col w-64 max-h-[72vh] rounded-2xl bg-[#181818]/95 backdrop-blur-2xl border border-white/10 p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+				class="flex flex-col w-64 max-h-[72vh] rounded-2xl bg-popover/95 backdrop-blur-xl border border-border p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200 text-popover-foreground"
 			>
 				<div class="flex flex-col gap-1 overflow-y-auto no-scrollbar py-1">
 					{#each checkpoints as cp (cp.id)}
@@ -75,10 +75,10 @@
 							class={cn(
 								"w-full text-left truncate px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer font-sans leading-tight",
 								isActive
-									? "bg-white/20 text-white font-medium shadow-xs border border-white/10"
+									? "bg-accent text-accent-foreground font-semibold border border-border/60 shadow-xs"
 									: isHovered
-										? "bg-white/10 text-white font-medium"
-										: "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+										? "bg-accent/60 text-accent-foreground font-medium"
+										: "text-muted-foreground hover:text-foreground hover:bg-muted/50"
 							)}
 							title={cp.title}
 						>
