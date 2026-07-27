@@ -21,33 +21,34 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final AccountVerificationFilter accountVerificationFilter;
-    private final UserDetailsService userDetailsService;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        // private final AccountVerificationFilter accountVerificationFilter;
+        private final UserDetailsService userDetailsService;
 
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/v1/auth/**", "/h2-console/**",
-                                "/uploads/**", "/actuator/**")
-                        .permitAll()
-                        .anyRequest().authenticated())
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .userDetailsService(userDetailsService)
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
-        // .addFilterAfter(accountVerificationFilter,
-        // JwtAuthenticationFilter.class);
+        @Bean
+        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                http
+                                .cors(Customizer.withDefaults())
+                                .csrf(csrf -> csrf.disable())
+                                .authorizeHttpRequests(authorize -> authorize
+                                                .requestMatchers("/api/v1/auth/**", "/h2-console/**",
+                                                                "/uploads/**", "/actuator/**")
+                                                .permitAll()
+                                                .anyRequest().authenticated())
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .userDetailsService(userDetailsService)
+                                .addFilterBefore(jwtAuthenticationFilter,
+                                                UsernamePasswordAuthenticationFilter.class)
+                // .addFilterAfter(accountVerificationFilter,
+                // JwtAuthenticationFilter.class)
+                ;
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
+        @Bean
+        PasswordEncoder passwordEncoder() {
+                return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        }
 }

@@ -32,5 +32,14 @@ security:
     key: ${JWT_SECRET_KEY}
     expiration-time: ${JWT_EXPIRATION_TIME}
 
+
+minio:
+  endpoint: ${MINIO_ENDPOINT}
+  access-key: minioadmin
+  secret-key: minioadmin123
+  bucket: files
+
+
+
 server:
   port: 7000
