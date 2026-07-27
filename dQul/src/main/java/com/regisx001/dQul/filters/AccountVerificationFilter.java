@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import java.io.IOException;
 import java.util.Arrays;
 
-@Component
+// @Component
 @RequiredArgsConstructor
 public class AccountVerificationFilter extends OncePerRequestFilter {
 

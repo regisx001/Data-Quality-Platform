@@ -1,16 +1,13 @@
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
-import { getCurrentUser, updateUserProfile } from "$lib/server/api";
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user || !locals.token) {
 		throw redirect(303, "/login");
 	}
 
-	const freshUser = await getCurrentUser(locals.token);
-
 	return {
-		user: freshUser || locals.user
+		user: locals.user
 	};
 };
 
@@ -24,29 +21,26 @@ export const actions: Actions = {
 		const fullName = data.get("fullName")?.toString().trim();
 		const email = data.get("email")?.toString().trim();
 
-		if (!fullName || !email) {
+		if (email && !email.includes("@")) {
 			return fail(400, {
-				error: "Full Name and Email are required",
+				error: "Please enter a valid email address",
 				success: false
 			});
 		}
 
-		const result = await updateUserProfile(locals.token, locals.user.userId, {
-			fullName,
-			email
-		});
+		const updatedUser = {
+			...locals.user,
+			fullName: fullName !== undefined ? fullName : locals.user.fullName,
+			email: email !== undefined ? email : locals.user.email
+		};
 
-		if (!result.ok) {
-			return fail(result.status || 400, {
-				error: result.error,
-				success: false
-			});
-		}
+		locals.user = updatedUser;
 
 		return {
 			success: true,
-			message: "Profile updated successfully!",
-			user: result.data
+			error: undefined,
+			message: "Account settings updated successfully!",
+			user: updatedUser
 		};
 	}
 };

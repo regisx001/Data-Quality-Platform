@@ -31,6 +31,27 @@ export interface ApiError {
 	message: string;
 }
 
+export type DatasourceStatus = "REGISTERED" | "ACTIVE" | "DISABLED" | "ARCHIVED";
+
+export interface Dataset {
+	id: string;
+	name: string;
+	description?: string;
+	rowCount?: number;
+	createdAt?: string;
+}
+
+export interface Datasource {
+	id: string;
+	name: string;
+	type: string;
+	description?: string;
+	status: DatasourceStatus;
+	owner: string;
+	registrationDate: string;
+	datasets?: Dataset[];
+}
+
 /**
  * Register a new user
  * POST /api/v1/auth/register
@@ -179,6 +200,214 @@ export async function updateUserProfile(
 			ok: false,
 			status: 500,
 			error: err.message || "Network error updating profile"
+		};
+	}
+}
+
+/* ==========================================================================
+   Datasource API Helper Functions (/api/v1/datasources)
+   ========================================================================== */
+
+/**
+ * List all datasources (or filtered by status / owner)
+ * GET /api/v1/datasources
+ * GET /api/v1/datasources/by-status/{status}
+ * GET /api/v1/datasources/by-owner/{owner}
+ */
+export async function getDatasources(
+	token: string,
+	filter?: { status?: string; owner?: string }
+): Promise<Datasource[]> {
+	try {
+		let endpoint = `${BACKEND_API_URL}/api/v1/datasources`;
+		if (filter?.status && filter.status !== "ALL") {
+			endpoint = `${BACKEND_API_URL}/api/v1/datasources/by-status/${encodeURIComponent(filter.status)}`;
+		} else if (filter?.owner) {
+			endpoint = `${BACKEND_API_URL}/api/v1/datasources/by-owner/${encodeURIComponent(filter.owner)}`;
+		}
+
+		const res = await fetch(endpoint, {
+			method: "GET",
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+
+		if (!res.ok) return [];
+		return await res.json();
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Get datasource by ID
+ * GET /api/v1/datasources/{id}
+ */
+export async function getDatasourceById(
+	token: string,
+	id: string
+): Promise<Datasource | null> {
+	try {
+		const res = await fetch(`${BACKEND_API_URL}/api/v1/datasources/${id}`, {
+			method: "GET",
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+
+		if (!res.ok) return null;
+		return await res.json();
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Create a new datasource
+ * POST /api/v1/datasources
+ */
+export async function createDatasource(
+	token: string,
+	data: { name: string; type: string; description?: string; owner: string }
+): Promise<{ ok: true; data: Datasource } | { ok: false; status: number; error: string }> {
+	try {
+		const res = await fetch(`${BACKEND_API_URL}/api/v1/datasources`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(data)
+		});
+
+		const body = await res.json().catch(() => ({ message: "Failed to parse response" }));
+
+		if (!res.ok) {
+			return {
+				ok: false,
+				status: res.status,
+				error: body.message || `Creation failed with status ${res.status}`
+			};
+		}
+
+		return { ok: true, data: body };
+	} catch (err: any) {
+		return {
+			ok: false,
+			status: 500,
+			error: err.message || "Network error creating datasource"
+		};
+	}
+}
+
+/**
+ * Update an existing datasource
+ * PUT /api/v1/datasources/{id}
+ */
+export async function updateDatasource(
+	token: string,
+	id: string,
+	data: { name?: string; type?: string; description?: string; status?: DatasourceStatus }
+): Promise<{ ok: true; data: Datasource } | { ok: false; status: number; error: string }> {
+	try {
+		const res = await fetch(`${BACKEND_API_URL}/api/v1/datasources/${id}`, {
+			method: "PUT",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(data)
+		});
+
+		const body = await res.json().catch(() => ({ message: "Failed to parse response" }));
+
+		if (!res.ok) {
+			return {
+				ok: false,
+				status: res.status,
+				error: body.message || `Update failed with status ${res.status}`
+			};
+		}
+
+		return { ok: true, data: body };
+	} catch (err: any) {
+		return {
+			ok: false,
+			status: 500,
+			error: err.message || "Network error updating datasource"
+		};
+	}
+}
+
+/**
+ * Delete a datasource
+ * DELETE /api/v1/datasources/{id}
+ */
+export async function deleteDatasource(
+	token: string,
+	id: string
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+	try {
+		const res = await fetch(`${BACKEND_API_URL}/api/v1/datasources/${id}`, {
+			method: "DELETE",
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+
+		if (!res.ok && res.status !== 204) {
+			const body = await res.json().catch(() => ({ message: "Failed to parse response" }));
+			return {
+				ok: false,
+				status: res.status,
+				error: body.message || `Deletion failed with status ${res.status}`
+			};
+		}
+
+		return { ok: true };
+	} catch (err: any) {
+		return {
+			ok: false,
+			status: 500,
+			error: err.message || "Network error deleting datasource"
+		};
+	}
+}
+
+/**
+ * Change datasource status: activate, disable, or archive
+ * PATCH /api/v1/datasources/{id}/{activate|disable|archive}
+ */
+export async function changeDatasourceStatus(
+	token: string,
+	id: string,
+	action: "activate" | "disable" | "archive"
+): Promise<{ ok: true; data: Datasource } | { ok: false; status: number; error: string }> {
+	try {
+		const res = await fetch(`${BACKEND_API_URL}/api/v1/datasources/${id}/${action}`, {
+			method: "PATCH",
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+
+		const body = await res.json().catch(() => ({ message: "Failed to parse response" }));
+
+		if (!res.ok) {
+			return {
+				ok: false,
+				status: res.status,
+				error: body.message || `Status change (${action}) failed with status ${res.status}`
+			};
+		}
+
+		return { ok: true, data: body };
+	} catch (err: any) {
+		return {
+			ok: false,
+			status: 500,
+			error: err.message || `Network error during ${action} action`
 		};
 	}
 }
