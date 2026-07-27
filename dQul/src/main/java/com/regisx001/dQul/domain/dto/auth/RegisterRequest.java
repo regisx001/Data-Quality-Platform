@@ -18,4 +18,8 @@ public class RegisterRequest {
 
     @Builder.Default
     private String role = "USER";
+
+    public void setRole(String role) {
+        this.role = role != null ? role : "USER";
+    }
 }

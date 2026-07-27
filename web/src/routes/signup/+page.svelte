@@ -1,5 +1,8 @@
 <script lang="ts">
 	import SignupForm from "$lib/components/signup/signup-form.svelte";
+	import type { ActionData } from "./$types";
+
+	let { form }: { form: ActionData } = $props();
 </script>
 
 <svelte:head>
@@ -8,5 +11,5 @@
 </svelte:head>
 
 <main class="h-svh w-full overflow-hidden bg-background">
-	<SignupForm class="h-full w-full" />
+	<SignupForm form={form} class="h-full w-full" />
 </main>

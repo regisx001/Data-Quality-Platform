@@ -32,7 +32,7 @@
     let handleStop = () => {};
 
     interface AttachmentItem {
-        type: string;
+        type: "file";
         url?: string;
         mediaType: string;
         filename: string;
