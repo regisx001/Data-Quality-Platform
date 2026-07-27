@@ -27,5 +27,10 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+security:
+  jwt:
+    key: ${JWT_SECRET_KEY}
+    expiration-time: ${JWT_EXPIRATION_TIME}
+
 server:
   port: 7000
