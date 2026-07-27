@@ -42,36 +42,46 @@ public class AccountVerificationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String requestURI = request.getRequestURI();
 
-        if (excludedPaths.stream().anyMatch(requestURI::startsWith)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication != null && authentication.isAuthenticated() &&
-                !authentication.getName().equals("anonymousUser")) {
-
-            User user = userRepository.findByUsername(authentication.getName())
-                    .orElse(null);
-
-            if (user != null && !user.isVerified()) {
-                // User is not verified, return 403
-                ApiErrorResponse error = ApiErrorResponse.builder()
-                        .status(HttpStatus.FORBIDDEN.value())
-                        .message("Account verification required. Please check your email for verification code.")
-                        .build();
-
-                response.setStatus(HttpStatus.FORBIDDEN.value());
-                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write(objectMapper.writeValueAsString(error));
-                return;
-            }
-        }
-
+        // ─────────────────────────────────────────────────────────────────
+        // DISABLED — always passes through. Re-enable by uncommenting the
+        // verification logic below and adding the filter back in SecurityConfig.
+        // ─────────────────────────────────────────────────────────────────
         filterChain.doFilter(request, response);
+
+        // === Verification logic (re-enable when needed) ===
+        //
+        // String requestURI = request.getRequestURI();
+        //
+        // if (excludedPaths.stream().anyMatch(requestURI::startsWith)) {
+        // filterChain.doFilter(request, response);
+        // return;
+        // }
+        //
+        // Authentication authentication =
+        // SecurityContextHolder.getContext().getAuthentication();
+        //
+        // if (authentication != null && authentication.isAuthenticated() &&
+        // !authentication.getName().equals("anonymousUser")) {
+        //
+        // User user = userRepository.findByUsername(authentication.getName())
+        // .orElse(null);
+        //
+        // if (user != null && !user.isVerified()) {
+        // ApiErrorResponse error = ApiErrorResponse.builder()
+        // .status(HttpStatus.FORBIDDEN.value())
+        // .message("Account verification required. Please check your email for
+        // verification code.")
+        // .build();
+        //
+        // response.setStatus(HttpStatus.FORBIDDEN.value());
+        // response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        // response.getWriter().write(objectMapper.writeValueAsString(error));
+        // return;
+        // }
+        // }
+        //
+        // filterChain.doFilter(request, response);
     }
 
 }

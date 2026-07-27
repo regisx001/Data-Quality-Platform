@@ -39,9 +39,9 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .userDetailsService(userDetailsService)
                 .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(accountVerificationFilter,
-                        JwtAuthenticationFilter.class);
+                        UsernamePasswordAuthenticationFilter.class);
+        // .addFilterAfter(accountVerificationFilter,
+        // JwtAuthenticationFilter.class);
 
         return http.build();
     }
