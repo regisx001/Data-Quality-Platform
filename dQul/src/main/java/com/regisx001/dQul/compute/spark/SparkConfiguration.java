@@ -2,10 +2,12 @@ package com.regisx001.dQul.compute.spark;
 
 import org.apache.spark.sql.SparkSession;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@EnableConfigurationProperties(SparkProperties.class)
 @ConditionalOnProperty(name = "spark.enabled", havingValue = "true", matchIfMissing = true)
 public class SparkConfiguration {
 
@@ -32,10 +34,9 @@ public class SparkConfiguration {
 
         // --- UI configuration ---
         SparkProperties.Ui ui = properties.getUi();
-        builder.config("spark.ui.enabled", String.valueOf(ui.isEnabled()));
-        if (ui.isEnabled()) {
-            builder.config("spark.ui.port", String.valueOf(ui.getPort()));
-        }
+        boolean uiEnabled = ui != null && ui.isEnabled();
+        builder.config("spark.ui.enabled", String.valueOf(uiEnabled));
+        builder.config("spark.ui.port", uiEnabled ? String.valueOf(ui.getPort()) : "0");
 
         // --- SQL configuration ---
         SparkProperties.Sql sql = properties.getSql();
@@ -57,4 +58,5 @@ public class SparkConfiguration {
 
         return spark;
     }
+
 }

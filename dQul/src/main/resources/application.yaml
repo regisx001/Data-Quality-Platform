@@ -54,7 +54,7 @@ spark:
   log-level: WARN
 
   ui:
-    enabled: true
+    enabled: false
     port: 4040
 
   sql:

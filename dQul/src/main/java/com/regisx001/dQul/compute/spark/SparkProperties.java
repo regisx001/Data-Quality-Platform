@@ -95,7 +95,7 @@ public class SparkProperties {
         /**
          * Whether to enable the Spark UI.
          */
-        private boolean enabled = true;
+        private boolean enabled = false;
 
         /**
          * Port for the Spark UI.
