@@ -8,7 +8,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
-import com.regisx001.dQul.storage.MinioConfig;
+import com.regisx001.dQul.storage.minio.MinioConfig;
 
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
