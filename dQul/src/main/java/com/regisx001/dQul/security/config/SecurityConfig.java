@@ -12,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.regisx001.dQul.security.filters.AccountVerificationFilter;
+// import com.regisx001.dQul.security.filters.AccountVerificationFilter;
 import com.regisx001.dQul.security.filters.JwtAuthenticationFilter;
 
 import lombok.RequiredArgsConstructor;

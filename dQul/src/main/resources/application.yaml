@@ -39,6 +39,39 @@ minio:
   secret-key: minioadmin123
   bucket: files
 
+spark:
+  enabled: true
+  app-name: dQul Compute Engine
+  master: local[*]
+  driver-host: localhost
+  driver-bind-address: 127.0.0.1
+  warehouse-directory: ./spark-warehouse
+  driver-memory: 2g
+  executor-memory: 2g
+  executor-cores: 2
+  default-parallelism: 4
+  shuffle-partitions: 8
+  log-level: WARN
+
+  ui:
+    enabled: true
+    port: 4040
+
+  sql:
+    adaptive-enabled: true
+    ansi-enabled: true
+    case-sensitive: false
+    session-timezone: UTC
+    broadcast-timeout: 300
+
+  serializer: org.apache.spark.serializer.KryoSerializer
+
+  extra-config:
+    spark.sql.execution.arrow.pyspark.enabled: false
+    spark.sql.catalogImplementation: in-memory
+    spark.eventLog.enabled: false
+    spark.sql.files.ignoreCorruptFiles: true
+    spark.sql.files.ignoreMissingFiles: true
 
 
 server:

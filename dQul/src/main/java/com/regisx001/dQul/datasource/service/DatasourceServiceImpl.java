@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.repository.DatasourceRepository;
-import com.regisx001.dQul.datasource.service.DatasourceService;
 
 import jakarta.persistence.EntityNotFoundException;
 
