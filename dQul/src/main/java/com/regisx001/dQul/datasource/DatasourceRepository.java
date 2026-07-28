@@ -1,4 +1,4 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.datasource;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,8 +6,8 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.regisx001.dQul.domain.entities.Datasource;
-import com.regisx001.dQul.domain.enums.DatasourceStatus;
+import com.regisx001.dQul.datasource.Datasource;
+import com.regisx001.dQul.datasource.DatasourceStatus;
 
 public interface DatasourceRepository extends JpaRepository<Datasource, UUID> {
 

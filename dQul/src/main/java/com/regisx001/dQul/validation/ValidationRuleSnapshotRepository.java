@@ -1,11 +1,11 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.validation;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.regisx001.dQul.domain.entities.ValidationRuleSnapshot;
+import com.regisx001.dQul.validation.ValidationRuleSnapshot;
 
 public interface ValidationRuleSnapshotRepository extends JpaRepository<ValidationRuleSnapshot, UUID> {
 

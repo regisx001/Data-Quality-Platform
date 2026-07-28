@@ -1,8 +1,8 @@
-package com.regisx001.dQul.services;
+package com.regisx001.dQul.security;
 
 import java.util.List;
 
-import com.regisx001.dQul.domain.entities.User;
+import com.regisx001.dQul.common.User;
 
 public interface JwtService {
     public String extractUsername(String token);

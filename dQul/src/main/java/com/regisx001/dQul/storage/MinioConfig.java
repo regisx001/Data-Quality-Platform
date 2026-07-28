@@ -1,4 +1,4 @@
-package com.regisx001.dQul.config;
+package com.regisx001.dQul.storage;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;

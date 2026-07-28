@@ -1,4 +1,4 @@
-package com.regisx001.dQul.services.impl;
+package com.regisx001.dQul.common;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -7,9 +7,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.repositories.UserRepository;
-import com.regisx001.dQul.services.UserService;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserRepository;
+import com.regisx001.dQul.common.UserService;
 
 import jakarta.persistence.EntityNotFoundException;
 

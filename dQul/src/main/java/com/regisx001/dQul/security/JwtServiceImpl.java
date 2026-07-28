@@ -1,9 +1,9 @@
-package com.regisx001.dQul.services.impl;
+package com.regisx001.dQul.security;
 
 import java.util.List;
 
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.services.JwtService;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.security.JwtService;
 
 import java.security.Key;
 import java.util.Date;

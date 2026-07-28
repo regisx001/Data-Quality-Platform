@@ -1,10 +1,9 @@
-package com.regisx001.dQul.domain.entities;
+package com.regisx001.dQul.notification;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.regisx001.dQul.domain.enums.NotificationStatus;
-import com.regisx001.dQul.domain.enums.NotificationType;
+import com.regisx001.dQul.common.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

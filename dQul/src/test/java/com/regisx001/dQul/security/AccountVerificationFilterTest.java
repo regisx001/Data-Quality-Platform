@@ -1,4 +1,4 @@
-package com.regisx001.dQul.filters;
+package com.regisx001.dQul.security;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -18,8 +18,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.repositories.UserRepository;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AccountVerificationFilterTest {

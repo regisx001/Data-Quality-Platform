@@ -1,4 +1,4 @@
-package com.regisx001.dQul.filters;
+package com.regisx001.dQul.security;
 
 import java.io.IOException;
 
@@ -11,9 +11,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.repositories.UserRepository;
-import com.regisx001.dQul.services.JwtService;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserRepository;
+import com.regisx001.dQul.security.JwtService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

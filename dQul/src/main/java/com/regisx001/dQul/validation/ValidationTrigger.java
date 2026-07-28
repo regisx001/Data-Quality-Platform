@@ -1,4 +1,4 @@
-package com.regisx001.dQul.domain.enums;
+package com.regisx001.dQul.validation;
 
 public enum ValidationTrigger {
     MANUAL,

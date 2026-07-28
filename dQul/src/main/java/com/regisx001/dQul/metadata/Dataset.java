@@ -1,11 +1,13 @@
-package com.regisx001.dQul.domain.entities;
+package com.regisx001.dQul.metadata;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.regisx001.dQul.domain.enums.DatasetStatus;
+import com.regisx001.dQul.datasource.Datasource;
+import com.regisx001.dQul.validation.QualityRule;
+import com.regisx001.dQul.validation.Validation;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

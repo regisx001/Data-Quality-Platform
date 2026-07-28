@@ -1,11 +1,11 @@
-package com.regisx001.dQul.domain.entities;
+package com.regisx001.dQul.datasource;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.regisx001.dQul.domain.enums.DatasourceStatus;
+import com.regisx001.dQul.metadata.Dataset;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

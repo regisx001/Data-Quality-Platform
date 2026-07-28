@@ -1,8 +1,8 @@
-package com.regisx001.dQul.services;
+package com.regisx001.dQul.authentication;
 
-import com.regisx001.dQul.domain.dto.auth.AuthenticationRequest;
-import com.regisx001.dQul.domain.dto.auth.AuthenticationResponse;
-import com.regisx001.dQul.domain.dto.auth.RegisterRequest;
+import com.regisx001.dQul.authentication.AuthenticationRequest;
+import com.regisx001.dQul.authentication.AuthenticationResponse;
+import com.regisx001.dQul.authentication.RegisterRequest;
 
 public interface AuthenticationService {
 

@@ -1,4 +1,4 @@
-package com.regisx001.dQul.services.impl;
+package com.regisx001.dQul.authentication;
 
 import java.time.LocalDateTime;
 
@@ -6,14 +6,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.regisx001.dQul.domain.dto.auth.AuthenticationRequest;
-import com.regisx001.dQul.domain.dto.auth.AuthenticationResponse;
-import com.regisx001.dQul.domain.dto.auth.RegisterRequest;
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.repositories.UserRepository;
-import com.regisx001.dQul.services.AuthenticationService;
-import com.regisx001.dQul.services.JwtService;
-import com.regisx001.dQul.services.UserService;
+import com.regisx001.dQul.authentication.AuthenticationRequest;
+import com.regisx001.dQul.authentication.AuthenticationResponse;
+import com.regisx001.dQul.authentication.RegisterRequest;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserRepository;
+import com.regisx001.dQul.authentication.AuthenticationService;
+import com.regisx001.dQul.security.JwtService;
+import com.regisx001.dQul.common.UserService;
 
 @Service
 @Transactional

@@ -1,4 +1,4 @@
-package com.regisx001.dQul.services.impl;
+package com.regisx001.dQul.security;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.regisx001.dQul.domain.entities.User;
+import com.regisx001.dQul.common.User;
 
 class JwtServiceImplTest {
 

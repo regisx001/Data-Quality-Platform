@@ -1,4 +1,4 @@
-package com.regisx001.dQul.domain.entities;
+package com.regisx001.dQul.common;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -22,6 +22,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import com.regisx001.dQul.notification.Notification;
 
 @Entity
 @Data

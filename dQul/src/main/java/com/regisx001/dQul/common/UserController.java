@@ -1,4 +1,4 @@
-package com.regisx001.dQul.controllers;
+package com.regisx001.dQul.common;
 
 import java.util.List;
 import java.util.UUID;
@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.regisx001.dQul.domain.dto.responses.ApiErrorResponse;
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.services.UserService;
+import com.regisx001.dQul.common.ApiErrorResponse;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserService;
 
 import jakarta.persistence.EntityNotFoundException;
 

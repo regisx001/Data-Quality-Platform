@@ -1,4 +1,4 @@
-package com.regisx001.dQul.filters;
+package com.regisx001.dQul.security;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -22,9 +22,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.repositories.UserRepository;
-import com.regisx001.dQul.services.JwtService;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserRepository;
+import com.regisx001.dQul.security.JwtService;
 
 import jakarta.servlet.ServletException;
 

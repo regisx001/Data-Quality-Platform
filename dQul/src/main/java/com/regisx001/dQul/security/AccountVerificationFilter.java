@@ -1,4 +1,4 @@
-package com.regisx001.dQul.filters;
+package com.regisx001.dQul.security;
 
 import java.util.List;
 
@@ -10,9 +10,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.regisx001.dQul.domain.dto.responses.ApiErrorResponse;
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.repositories.UserRepository;
+import com.regisx001.dQul.common.ApiErrorResponse;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserRepository;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

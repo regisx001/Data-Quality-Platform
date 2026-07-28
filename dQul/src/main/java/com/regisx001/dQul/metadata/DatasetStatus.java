@@ -1,4 +1,4 @@
-package com.regisx001.dQul.domain.enums;
+package com.regisx001.dQul.metadata;
 
 public enum DatasetStatus {
     ACTIVE,

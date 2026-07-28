@@ -1,12 +1,12 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.validation;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.regisx001.dQul.domain.entities.Finding;
-import com.regisx001.dQul.domain.enums.RuleSeverity;
+import com.regisx001.dQul.validation.Finding;
+import com.regisx001.dQul.validation.RuleSeverity;
 
 public interface FindingRepository extends JpaRepository<Finding, UUID> {
 

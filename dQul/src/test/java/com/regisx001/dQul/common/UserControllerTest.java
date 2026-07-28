@@ -1,4 +1,4 @@
-package com.regisx001.dQul.controllers;
+package com.regisx001.dQul.common;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -19,8 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.services.UserService;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserService;
 
 import jakarta.persistence.EntityNotFoundException;
 

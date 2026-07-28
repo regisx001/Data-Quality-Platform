@@ -1,13 +1,14 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.validation;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.regisx001.dQul.domain.entities.QualityRule;
-import com.regisx001.dQul.domain.enums.RuleCategory;
-import com.regisx001.dQul.domain.enums.RuleSeverity;
+import com.regisx001.dQul.validation.QualityRule;
+import com.regisx001.dQul.validation.RuleCategory;
+import com.regisx001.dQul.metadata.Dataset;
+import com.regisx001.dQul.validation.RuleSeverity;
 
 public interface QualityRuleRepository extends JpaRepository<QualityRule, UUID> {
 

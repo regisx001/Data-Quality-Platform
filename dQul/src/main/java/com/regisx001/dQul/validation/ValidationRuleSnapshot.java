@@ -1,9 +1,9 @@
-package com.regisx001.dQul.domain.entities;
+package com.regisx001.dQul.validation;
 
 import java.util.UUID;
 
-import com.regisx001.dQul.domain.enums.RuleCategory;
-import com.regisx001.dQul.domain.enums.RuleSeverity;
+import com.regisx001.dQul.validation.RuleCategory;
+import com.regisx001.dQul.validation.RuleSeverity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

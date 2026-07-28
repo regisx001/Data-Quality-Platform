@@ -1,11 +1,11 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.common;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.regisx001.dQul.domain.entities.User;
+import com.regisx001.dQul.common.User;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 

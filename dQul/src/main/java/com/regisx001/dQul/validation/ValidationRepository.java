@@ -1,4 +1,4 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.validation;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -6,9 +6,9 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.regisx001.dQul.domain.entities.Validation;
-import com.regisx001.dQul.domain.enums.ValidationStatus;
-import com.regisx001.dQul.domain.enums.ValidationTrigger;
+import com.regisx001.dQul.validation.ValidationStatus;
+import com.regisx001.dQul.metadata.Dataset;
+import com.regisx001.dQul.validation.ValidationTrigger;
 
 public interface ValidationRepository extends JpaRepository<Validation, UUID> {
 

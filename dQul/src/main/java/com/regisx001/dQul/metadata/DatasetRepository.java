@@ -1,12 +1,13 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.metadata;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.regisx001.dQul.domain.entities.Dataset;
-import com.regisx001.dQul.domain.enums.DatasetStatus;
+import com.regisx001.dQul.metadata.Dataset;
+import com.regisx001.dQul.metadata.DatasetStatus;
+import com.regisx001.dQul.datasource.Datasource;
 
 public interface DatasetRepository extends JpaRepository<Dataset, UUID> {
 

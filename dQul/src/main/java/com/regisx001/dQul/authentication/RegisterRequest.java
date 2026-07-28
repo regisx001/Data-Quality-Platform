@@ -1,4 +1,4 @@
-package com.regisx001.dQul.domain.dto.auth;
+package com.regisx001.dQul.authentication;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

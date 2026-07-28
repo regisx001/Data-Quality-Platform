@@ -1,4 +1,4 @@
-package com.regisx001.dQul.controllers;
+package com.regisx001.dQul.authentication;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.regisx001.dQul.domain.dto.auth.AuthenticationRequest;
-import com.regisx001.dQul.domain.dto.auth.AuthenticationResponse;
-import com.regisx001.dQul.domain.dto.auth.RegisterRequest;
-import com.regisx001.dQul.domain.dto.responses.ApiErrorResponse;
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.services.AuthenticationService;
+import com.regisx001.dQul.authentication.AuthenticationRequest;
+import com.regisx001.dQul.authentication.AuthenticationResponse;
+import com.regisx001.dQul.authentication.RegisterRequest;
+import com.regisx001.dQul.common.ApiErrorResponse;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.authentication.AuthenticationService;
 
 @RestController
 @RequestMapping("/api/v1/auth")

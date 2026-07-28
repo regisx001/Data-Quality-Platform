@@ -1,12 +1,12 @@
-package com.regisx001.dQul.repositories;
+package com.regisx001.dQul.notification;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import com.regisx001.dQul.domain.entities.Notification;
-import com.regisx001.dQul.domain.enums.NotificationStatus;
-import com.regisx001.dQul.domain.enums.NotificationType;
+import com.regisx001.dQul.notification.Notification;
+import com.regisx001.dQul.notification.NotificationStatus;
+import com.regisx001.dQul.notification.NotificationType;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 

@@ -1,4 +1,4 @@
-package com.regisx001.dQul.services.impl;
+package com.regisx001.dQul.common;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -15,8 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.repositories.UserRepository;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.common.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 

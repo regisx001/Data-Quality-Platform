@@ -1,4 +1,4 @@
-package com.regisx001.dQul.controllers;
+package com.regisx001.dQul.authentication;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -22,11 +22,11 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.regisx001.dQul.domain.dto.auth.AuthenticationRequest;
-import com.regisx001.dQul.domain.dto.auth.AuthenticationResponse;
-import com.regisx001.dQul.domain.dto.auth.RegisterRequest;
-import com.regisx001.dQul.domain.entities.User;
-import com.regisx001.dQul.services.AuthenticationService;
+import com.regisx001.dQul.authentication.AuthenticationRequest;
+import com.regisx001.dQul.authentication.AuthenticationResponse;
+import com.regisx001.dQul.authentication.RegisterRequest;
+import com.regisx001.dQul.common.User;
+import com.regisx001.dQul.authentication.AuthenticationService;
 
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {

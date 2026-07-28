@@ -1,4 +1,4 @@
-package com.regisx001.dQul.domain.dto.responses;
+package com.regisx001.dQul.common;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
