@@ -42,6 +42,26 @@ services:
     command: server /data --console-address ":9001"
     networks:
       - dqul-network
+  # spark-master:
+  #   image: apache/spark:latest
+  #   container_name: dqul-spark-master
+  #   # restart: unless-stopped
+  #   command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+  #   ports:
+  #     - "${SPARK_MASTER_PORT:-7077}:7077"
+  #     - "${SPARK_UI_PORT:-8080}:8080"
+  #   networks:
+  #     - dqul-network
+
+  # spark-worker:
+  #   image: apache/spark:latest
+  #   container_name: dqul-spark-worker
+  #   # restart: unless-stopped
+  #   command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+  #   depends_on:
+  #     - spark-master
+  #   networks:
+  #     - dqul-network
 
 volumes:
   postgres_data:

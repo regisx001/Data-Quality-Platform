@@ -39,7 +39,11 @@ minio:
   secret-key: minioadmin123
   bucket: files
 
-
+spark:
+  app-name: ${SPARK_APP_NAME:dQul-Data-Quality-Engine}
+  master: ${SPARK_MASTER:local[*]}
+  driver-memory: 1g
+  executor-memory: 1g
 
 server:
   port: 7000
