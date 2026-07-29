@@ -32,18 +32,56 @@ security:
     key: ${JWT_SECRET_KEY}
     expiration-time: ${JWT_EXPIRATION_TIME}
 
-
 minio:
   endpoint: ${MINIO_ENDPOINT}
   access-key: minioadmin
   secret-key: minioadmin123
   bucket: files
 
+# Apache Spark Compute Engine Configuration
 spark:
+  enabled: ${SPARK_ENABLED:true}
   app-name: ${SPARK_APP_NAME:dQul-Data-Quality-Engine}
   master: ${SPARK_MASTER:local[*]}
-  driver-memory: 1g
-  executor-memory: 1g
+  driver-host: ${SPARK_DRIVER_HOST:localhost}
+  driver-bind-address: ${SPARK_DRIVER_BIND_ADDRESS:127.0.0.1}
+  warehouse-directory: ${SPARK_WAREHOUSE_DIR:./spark-warehouse}
+  driver-memory: ${SPARK_DRIVER_MEMORY:1g}
+  executor-memory: ${SPARK_EXECUTOR_MEMORY:1g}
+  executor-cores: ${SPARK_EXECUTOR_CORES:2}
+  default-parallelism: ${SPARK_DEFAULT_PARALLELISM:4}
+  shuffle-partitions: ${SPARK_SHUFFLE_PARTITIONS:8}
+  log-level: ${SPARK_LOG_LEVEL:WARN}
+  serializer: ${SPARK_SERIALIZER:org.apache.spark.serializer.JavaSerializer}
+  ui:
+    enabled: ${SPARK_UI_ENABLED:false}
+    port: ${SPARK_UI_PORT:4040}
+  sql:
+    adaptive-enabled: ${SPARK_SQL_ADAPTIVE_ENABLED:true}
+    ansi-enabled: ${SPARK_SQL_ANSI_ENABLED:true}
+    case-sensitive: ${SPARK_SQL_CASE_SENSITIVE:false}
+    session-timezone: ${SPARK_SQL_SESSION_TIMEZONE:UTC}
+    broadcast-timeout: ${SPARK_SQL_BROADCAST_TIMEOUT:300}
+
+# Data Source Connectors Configuration
+# connector:
+#   postgres:
+#     host: ${POSTGRES_CONNECTOR_HOST:localhost}
+#     port: ${POSTGRES_CONNECTOR_PORT:5432}
+#     database: ${POSTGRES_CONNECTOR_DB:postgres}
+#     schema: ${POSTGRES_CONNECTOR_SCHEMA:public}
+#     username: ${POSTGRES_CONNECTOR_USER:postgres}
+#     password: ${POSTGRES_CONNECTOR_PASSWORD:postgres}
+#     ssl: ${POSTGRES_CONNECTOR_SSL:false}
+#     connection-timeout-ms: ${POSTGRES_CONNECTOR_TIMEOUT_MS:30000}
+#     fetch-size: ${POSTGRES_CONNECTOR_FETCH_SIZE:10000}
+#   csv:
+#     delimiter: "${CSV_CONNECTOR_DELIMITER:,}"
+#     header: ${CSV_CONNECTOR_HEADER:true}
+#     encoding: ${CSV_CONNECTOR_ENCODING:UTF-8}
+#     quote-char: "${CSV_CONNECTOR_QUOTE:\"]}"
+#     escape-char: "${CSV_CONNECTOR_ESCAPE:\\}"
+#     infer-schema: ${CSV_CONNECTOR_INFER_SCHEMA:true}
 
 server:
   port: 7000
