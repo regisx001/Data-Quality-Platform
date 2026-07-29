@@ -1,41 +1,71 @@
 package com.regisx001.dQul.compute.spark;
 
-import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SparkSession;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableConfigurationProperties(SparkProperties.class)
+@ConditionalOnProperty(name = "spark.enabled", havingValue = "true", matchIfMissing = true)
 public class SparkConfiguration {
 
-    @Bean
-    public SparkConf sparkConf(SparkProperties sparkProperties) {
-        SparkConf conf = new SparkConf()
-                .setAppName(sparkProperties.getAppName())
-                .setMaster(sparkProperties.getMaster())
-                .set("spark.ui.enabled", String.valueOf(sparkProperties.isUiEnabled()));
+    private final SparkProperties properties;
 
-        if (sparkProperties.getDriverMemory() != null && !sparkProperties.getDriverMemory().isBlank()) {
-            conf.set("spark.driver.memory", sparkProperties.getDriverMemory());
-        }
-
-        if (sparkProperties.getExecutorMemory() != null && !sparkProperties.getExecutorMemory().isBlank()) {
-            conf.set("spark.executor.memory", sparkProperties.getExecutorMemory());
-        }
-
-        if (sparkProperties.getConfig() != null) {
-            sparkProperties.getConfig().forEach(conf::set);
-        }
-
-        return conf;
+    public SparkConfiguration(SparkProperties properties) {
+        this.properties = properties;
     }
 
-    @Bean(destroyMethod = "stop")
-    public SparkSession sparkSession(SparkConf sparkConf) {
-        return SparkSession.builder()
-                .config(sparkConf)
-                .getOrCreate();
+    @Bean(destroyMethod = "close")
+    public SparkSession sparkSession() {
+        SparkSession.Builder builder = SparkSession.builder()
+                .appName(properties.getAppName())
+                .master(properties.getMaster())
+                .config("spark.driver.host", properties.getDriverHost())
+                .config("spark.driver.bindAddress", properties.getDriverBindAddress())
+                .config("spark.sql.warehouse.dir", properties.getWarehouseDirectory())
+                .config("spark.driver.memory", properties.getDriverMemory())
+                .config("spark.executor.memory", properties.getExecutorMemory())
+                .config("spark.executor.cores", String.valueOf(properties.getExecutorCores()))
+                .config("spark.default.parallelism", String.valueOf(properties.getDefaultParallelism()))
+                .config("spark.sql.shuffle.partitions", String.valueOf(properties.getShufflePartitions()));
+
+        if (properties.getSerializer() != null && !properties.getSerializer().isBlank()) {
+            builder.config("spark.serializer", properties.getSerializer());
+        }
+
+        // --- UI configuration ---
+        SparkProperties.Ui ui = properties.getUi();
+        boolean uiEnabled = ui != null && ui.isEnabled();
+        builder.config("spark.ui.enabled", String.valueOf(uiEnabled));
+        builder.config("spark.ui.port", uiEnabled ? String.valueOf(ui.getPort()) : "0");
+
+        // --- SQL configuration ---
+        SparkProperties.Sql sql = properties.getSql();
+        builder.config("spark.sql.adaptive.enabled", String.valueOf(sql.isAdaptiveEnabled()))
+                .config("spark.sql.ansi.enabled", String.valueOf(sql.isAnsiEnabled()))
+                .config("spark.sql.caseSensitive", String.valueOf(sql.isCaseSensitive()))
+                .config("spark.sql.session.timeZone", sql.getSessionTimezone())
+                .config("spark.sql.broadcastTimeout", String.valueOf(sql.getBroadcastTimeout()));
+
+        // --- Extra configuration ---
+        if (properties.getExtraConfig() != null) {
+            properties.getExtraConfig().forEach(builder::config);
+        }
+
+        SparkSession spark = builder.getOrCreate();
+
+        // Set log level after session creation (safely catch logging framework mismatches)
+        try {
+            if (properties.getLogLevel() != null && !properties.getLogLevel().isBlank()) {
+                spark.sparkContext().setLogLevel(properties.getLogLevel());
+            }
+        } catch (Throwable e) {
+            // Ignore logging framework cast exceptions when SLF4J bridge is used by Spring Boot
+        }
+
+        return spark;
     }
+
 }
