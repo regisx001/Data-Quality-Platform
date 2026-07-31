@@ -10,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.repository.DatasourceRepository;
-import com.regisx001.dQul.datasource.service.DatasourceService;
-
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
@@ -145,5 +143,21 @@ public class DatasourceServiceImpl implements DatasourceService {
     @Transactional(readOnly = true)
     public boolean isNameTaken(String name) {
         return datasourceRepository.existsByName(name);
+    }
+
+    // ── Configuration ────────────────────────────────────────────────────
+
+    @Override
+    public Datasource saveConfiguration(UUID id, String configJson) {
+        Datasource datasource = getDatasourceById(id);
+        datasource.setConfigJson(configJson);
+        return datasourceRepository.save(datasource);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getConfiguration(UUID id) {
+        Datasource datasource = getDatasourceById(id);
+        return datasource.getConfigJson();
     }
 }

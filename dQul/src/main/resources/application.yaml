@@ -63,25 +63,5 @@ spark:
     session-timezone: ${SPARK_SQL_SESSION_TIMEZONE:UTC}
     broadcast-timeout: ${SPARK_SQL_BROADCAST_TIMEOUT:300}
 
-# Data Source Connectors Configuration
-# connector:
-#   postgres:
-#     host: ${POSTGRES_CONNECTOR_HOST:localhost}
-#     port: ${POSTGRES_CONNECTOR_PORT:5432}
-#     database: ${POSTGRES_CONNECTOR_DB:postgres}
-#     schema: ${POSTGRES_CONNECTOR_SCHEMA:public}
-#     username: ${POSTGRES_CONNECTOR_USER:postgres}
-#     password: ${POSTGRES_CONNECTOR_PASSWORD:postgres}
-#     ssl: ${POSTGRES_CONNECTOR_SSL:false}
-#     connection-timeout-ms: ${POSTGRES_CONNECTOR_TIMEOUT_MS:30000}
-#     fetch-size: ${POSTGRES_CONNECTOR_FETCH_SIZE:10000}
-#   csv:
-#     delimiter: "${CSV_CONNECTOR_DELIMITER:,}"
-#     header: ${CSV_CONNECTOR_HEADER:true}
-#     encoding: ${CSV_CONNECTOR_ENCODING:UTF-8}
-#     quote-char: "${CSV_CONNECTOR_QUOTE:\"]}"
-#     escape-char: "${CSV_CONNECTOR_ESCAPE:\\}"
-#     infer-schema: ${CSV_CONNECTOR_INFER_SCHEMA:true}
-
 server:
   port: 7000

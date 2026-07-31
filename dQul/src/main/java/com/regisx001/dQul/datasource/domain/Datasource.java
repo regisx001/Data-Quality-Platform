@@ -53,6 +53,9 @@ public class Datasource {
     @Column(nullable = false)
     private LocalDateTime registrationDate;
 
+    @Column(name = "config_json", columnDefinition = "TEXT")
+    private String configJson;
+
     @OneToMany(mappedBy = "datasource", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Dataset> datasets = new ArrayList<>();

@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.regisx001.dQul.common.responses.ApiErrorResponse;
+import com.regisx001.dQul.connector.ConnectorConfigSchema;
+import com.regisx001.dQul.connector.ConnectorConfigSchemaService;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.service.DatasourceService;
@@ -27,9 +29,12 @@ import jakarta.persistence.EntityNotFoundException;
 public class DatasourceController {
 
     private final DatasourceService datasourceService;
+    private final ConnectorConfigSchemaService configSchemaService;
 
-    public DatasourceController(DatasourceService datasourceService) {
+    public DatasourceController(DatasourceService datasourceService,
+            ConnectorConfigSchemaService configSchemaService) {
         this.datasourceService = datasourceService;
+        this.configSchemaService = configSchemaService;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -182,6 +187,63 @@ public class DatasourceController {
         }
     }
 
+    // ── Configuration Schemas ────────────────────────────────────────────
+
+    @GetMapping("/config-schemas")
+    public ResponseEntity<List<ConnectorConfigSchema>> getConfigSchemas() {
+        return ResponseEntity.ok(configSchemaService.getAllSchemas());
+    }
+
+    @GetMapping("/{type}/config-schema")
+    public ResponseEntity<?> getConfigSchemaByType(@PathVariable String type) {
+        ConnectorConfigSchema schema = configSchemaService.getSchema(type);
+        if (schema == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message("No config schema found for type: " + type)
+                            .build());
+        }
+        return ResponseEntity.ok(schema);
+    }
+
+    // ── Configuration ────────────────────────────────────────────────────
+
+    @PutMapping("/{id}/config")
+    public ResponseEntity<?> saveConfiguration(
+            @PathVariable UUID id,
+            @RequestBody SaveConfigRequest request) {
+        try {
+            Datasource datasource = datasourceService.saveConfiguration(
+                    id, request.configJson());
+            return ResponseEntity.ok(datasource);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    @GetMapping("/{id}/config")
+    public ResponseEntity<?> getConfiguration(@PathVariable UUID id) {
+        try {
+            String config = datasourceService.getConfiguration(id);
+            if (config == null) {
+                return ResponseEntity.noContent().build();
+            }
+            return ResponseEntity.ok(
+                    new SaveConfigRequest(config));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
     // ── Inner DTOs ───────────────────────────────────────────────────────
 
     public record CreateDatasourceRequest(
@@ -196,5 +258,8 @@ public class DatasourceController {
             String type,
             String description,
             DatasourceStatus status) {
+    }
+
+    public record SaveConfigRequest(String configJson) {
     }
 }

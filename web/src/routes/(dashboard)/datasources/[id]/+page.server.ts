@@ -5,6 +5,9 @@ import {
 	updateDatasource,
 	deleteDatasource,
 	changeDatasourceStatus,
+	saveDatasourceConfig,
+	getDatasourceConfig,
+	getConfigSchemas,
 	type DatasourceStatus
 } from "$lib/server/api";
 
@@ -21,8 +24,19 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		});
 	}
 
+	const [configJson, configSchemas] = await Promise.all([
+		getDatasourceConfig(locals.token, params.id),
+		getConfigSchemas(locals.token)
+	]);
+
+	const configSchema = configSchemas.find(
+		s => s.type === datasource.type || s.type === datasource.type.toUpperCase()
+	) || null;
+
 	return {
 		datasource,
+		configJson,
+		configSchema,
 		user: locals.user
 	};
 };
@@ -106,5 +120,29 @@ export const actions: Actions = {
 		}
 
 		throw redirect(303, "/datasources");
+	},
+
+	saveConfig: async ({ request, locals, params }) => {
+		if (!locals.user || !locals.token) {
+			throw redirect(303, "/login");
+		}
+
+		const data = await request.formData();
+		const configJson = data.get("configJson")?.toString().trim() || "";
+
+		const result = await saveDatasourceConfig(locals.token, params.id, configJson);
+
+		if (!result.ok) {
+			return fail(result.status || 400, {
+				error: result.error,
+				action: "saveConfig"
+			});
+		}
+
+		return {
+			success: true,
+			message: "Datasource configuration saved successfully!",
+			configJson
+		};
 	}
 };

@@ -8,37 +8,56 @@ import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 
 public interface DatasourceService {
 
-    // ── CRUD ──────────────────────────────────────────────────────────────
+        // ── CRUD ──────────────────────────────────────────────────────────────
 
-    Datasource createDatasource(String name, String type, String description,
-            String owner);
+        Datasource createDatasource(String name, String type, String description,
+                        String owner);
 
-    Datasource getDatasourceById(UUID id);
+        Datasource getDatasourceById(UUID id);
 
-    Datasource getDatasourceByName(String name);
+        Datasource getDatasourceByName(String name);
 
-    List<Datasource> getAllDatasources();
+        List<Datasource> getAllDatasources();
 
-    Datasource updateDatasource(UUID id, String name, String type,
-            String description, DatasourceStatus status);
+        Datasource updateDatasource(UUID id, String name, String type,
+                        String description, DatasourceStatus status);
 
-    void deleteDatasource(UUID id);
+        void deleteDatasource(UUID id);
 
-    // ── Queries ───────────────────────────────────────────────────────────
+        // ── Queries ───────────────────────────────────────────────────────────
 
-    List<Datasource> getDatasourcesByStatus(DatasourceStatus status);
+        List<Datasource> getDatasourcesByStatus(DatasourceStatus status);
 
-    List<Datasource> getDatasourcesByOwner(String owner);
+        List<Datasource> getDatasourcesByOwner(String owner);
 
-    // ── Status management ────────────────────────────────────────────────
+        // ── Status management ────────────────────────────────────────────────
 
-    Datasource activateDatasource(UUID id);
+        Datasource activateDatasource(UUID id);
 
-    Datasource disableDatasource(UUID id);
+        Datasource disableDatasource(UUID id);
 
-    Datasource archiveDatasource(UUID id);
+        Datasource archiveDatasource(UUID id);
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+        // ── Helpers ───────────────────────────────────────────────────────────
 
-    boolean isNameTaken(String name);
+        boolean isNameTaken(String name);
+
+        // ── Configuration ────────────────────────────────────────────────────
+
+        /**
+         * Saves or updates the JSON configuration for a datasource.
+         *
+         * @param id         the datasource ID
+         * @param configJson JSON string with connector-specific configuration
+         * @return the updated datasource
+         */
+        Datasource saveConfiguration(UUID id, String configJson);
+
+        /**
+         * Retrieves the JSON configuration for a datasource.
+         *
+         * @param id the datasource ID
+         * @return the JSON configuration string, or {@code null} if not set
+         */
+        String getConfiguration(UUID id);
 }
