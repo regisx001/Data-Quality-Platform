@@ -12,10 +12,15 @@ import {
 	type DatasourceStatus
 } from "$lib/server/api";
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+const VALID_TABS = ["overview", "config", "connection"] as const;
+
+export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user || !locals.token) {
 		throw redirect(303, "/login");
 	}
+
+	const rawTab = url.searchParams.get("tab");
+	const activeTab = VALID_TABS.includes(rawTab as any) ? rawTab : "overview";
 
 	const datasource = await getDatasourceById(locals.token, params.id);
 
@@ -38,6 +43,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		datasource,
 		configJson,
 		configSchema,
+		activeTab,
 		user: locals.user
 	};
 };
