@@ -3,6 +3,7 @@ package com.regisx001.dQul.datasource.service;
 import java.util.List;
 import java.util.UUID;
 
+import com.regisx001.dQul.connector.api.ConnectionTestResult;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 
@@ -60,4 +61,14 @@ public interface DatasourceService {
          * @return the JSON configuration string, or {@code null} if not set
          */
         String getConfiguration(UUID id);
+
+        // ── Connection Testing ──────────────────────────────────────────────
+
+        /**
+         * Tests the connection for a datasource using its stored configuration.
+         *
+         * @param id the datasource ID
+         * @return the connection test result
+         */
+        ConnectionTestResult testConnection(UUID id);
 }

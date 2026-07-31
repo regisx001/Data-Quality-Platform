@@ -7,6 +7,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.regisx001.dQul.connector.ConnectorConfig;
+import com.regisx001.dQul.connector.ConnectorFactory;
+import com.regisx001.dQul.connector.DataSourceConnector;
+import com.regisx001.dQul.connector.api.ConnectionTestResult;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.repository.DatasourceRepository;
@@ -17,9 +24,14 @@ import jakarta.persistence.EntityNotFoundException;
 public class DatasourceServiceImpl implements DatasourceService {
 
     private final DatasourceRepository datasourceRepository;
+    private final ConnectorFactory connectorFactory;
+    private final ObjectMapper objectMapper;
 
-    public DatasourceServiceImpl(DatasourceRepository datasourceRepository) {
+    public DatasourceServiceImpl(DatasourceRepository datasourceRepository,
+            ConnectorFactory connectorFactory, ObjectMapper objectMapper) {
         this.datasourceRepository = datasourceRepository;
+        this.connectorFactory = connectorFactory;
+        this.objectMapper = objectMapper;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -159,5 +171,94 @@ public class DatasourceServiceImpl implements DatasourceService {
     public String getConfiguration(UUID id) {
         Datasource datasource = getDatasourceById(id);
         return datasource.getConfigJson();
+    }
+
+    // ── Connection Testing ───────────────────────────────────────────────
+
+    @Override
+    public ConnectionTestResult testConnection(UUID id) {
+        Datasource datasource = getDatasourceById(id);
+        String configJson = datasource.getConfigJson();
+
+        if (configJson == null || configJson.isBlank()) {
+            return ConnectionTestResult.failure(
+                    "No configuration saved for datasource '" + datasource.getName() + "'", 0);
+        }
+
+        ConnectorConfig config;
+        try {
+            config = parseConfig(datasource.getType(), configJson, datasource.getName());
+        } catch (IllegalArgumentException e) {
+            return ConnectionTestResult.failure(e.getMessage(), 0);
+        }
+
+        DataSourceConnector connector = connectorFactory.createConnector(config);
+        return connector.testConnection();
+    }
+
+    /**
+     * Parses the JSON configuration string into the appropriate
+     * {@link ConnectorConfig} subtype based on the datasource type.
+     */
+    private ConnectorConfig parseConfig(String type, String configJson, String datasourceName) {
+        try {
+            JsonNode root = objectMapper.readTree(configJson);
+
+            return switch (type.toUpperCase()) {
+                case "POSTGRESQL" -> {
+                    JsonNode pg = root;
+                    String host = getJsonText(pg, "host", "localhost");
+                    int port = getJsonInt(pg, "port", 5432);
+                    String database = getJsonText(pg, "database", "postgres");
+                    String schema = getJsonText(pg, "schema", "public");
+                    String username = getJsonText(pg, "username", "postgres");
+                    String password = getJsonText(pg, "password", "");
+                    boolean ssl = getJsonBoolean(pg, "ssl", false);
+                    int connectionTimeoutMs = getJsonInt(pg, "connectionTimeoutMs", 30000);
+                    int fetchSize = getJsonInt(pg, "fetchSize", 10000);
+
+                    yield new ConnectorConfig.Postgres(
+                            host, port, database, schema, username, password,
+                            ssl, connectionTimeoutMs, fetchSize, datasourceName);
+                }
+                case "CSV" -> {
+                    String filePath = getJsonText(root, "filePath", "");
+                    if (filePath.isBlank()) {
+                        throw new IllegalArgumentException(
+                                "filePath is required for CSV datasource");
+                    }
+                    char delimiter = (char) getJsonInt(root, "delimiter", (int) ',');
+                    boolean header = getJsonBoolean(root, "header", true);
+                    String encoding = getJsonText(root, "encoding", "UTF-8");
+                    char quoteChar = (char) getJsonInt(root, "quoteChar", (int) '"');
+                    char escapeChar = (char) getJsonInt(root, "escapeChar", (int) '\\');
+                    boolean inferSchema = getJsonBoolean(root, "inferSchema", true);
+
+                    yield new ConnectorConfig.Csv(
+                            filePath, delimiter, header, encoding, quoteChar,
+                            escapeChar, inferSchema, datasourceName);
+                }
+                default -> throw new IllegalArgumentException(
+                        "Unsupported datasource type: " + type);
+            };
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(
+                    "Failed to parse configuration JSON: " + e.getMessage());
+        }
+    }
+
+    private String getJsonText(JsonNode node, String field, String defaultValue) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asText() : defaultValue;
+    }
+
+    private int getJsonInt(JsonNode node, String field, int defaultValue) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asInt(defaultValue) : defaultValue;
+    }
+
+    private boolean getJsonBoolean(JsonNode node, String field, boolean defaultValue) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asBoolean(defaultValue) : defaultValue;
     }
 }

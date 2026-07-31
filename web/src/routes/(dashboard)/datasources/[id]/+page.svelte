@@ -16,10 +16,16 @@
 	import FileJson from "@lucide/svelte/icons/file-json";
 	import Loader2 from "@lucide/svelte/icons/loader-2";
 	import CheckCircle2 from "@lucide/svelte/icons/check-circle-2";
+	import XCircle from "@lucide/svelte/icons/x-circle";
+	import Cable from "@lucide/svelte/icons/cable";
 	import Eye from "@lucide/svelte/icons/eye";
 	import EyeOff from "@lucide/svelte/icons/eye-off";
 	import type { PageData, ActionData } from "./$types";
-	import type { DatasourceStatus, ConfigField } from "$lib/server/api";
+	import type {
+		DatasourceStatus,
+		ConfigField,
+		ConnectionTestResult,
+	} from "$lib/server/api";
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -38,6 +44,11 @@
 	let configSchema = $derived(data.configSchema);
 	let configSaved = $state(false);
 
+	// Connection test state
+	let isTestingConnection = $state(false);
+	let connectionTestResult = $state<ConnectionTestResult | null>(null);
+	let connectionTestError = $state<string | null>(null);
+
 	// Whether a configuration already exists in the DB
 	let hasConfig = $derived(
 		!!data.configJson &&
@@ -46,7 +57,14 @@
 	);
 
 	// Edit mode: fields are disabled until user clicks "Enable Editing"
-	let isEditingConfig = $state(!hasConfig);
+	let isEditingConfig = $state(false);
+
+	// Sync isEditingConfig with hasConfig on load or when data changes
+	$effect(() => {
+		if (!hasConfig) {
+			isEditingConfig = true;
+		}
+	});
 
 	// Dynamic config form values — keyed by field name
 	let configValues: Record<string, string> = $state({});
@@ -137,6 +155,27 @@
 
 	function handleConfigSubmit() {
 		configSaved = false;
+	}
+
+	// Handle the testConnection form action response via use:enhance
+	function enhanceTestConnection() {
+		isTestingConnection = true;
+		connectionTestResult = null;
+		connectionTestError = null;
+		return async ({ result }) => {
+			isTestingConnection = false;
+			if (result.type === "success") {
+				const data = result.data as any;
+				if (data?.connectionTest) {
+					connectionTestResult = data.connectionTest;
+				}
+			} else if (result.type === "failure") {
+				const data = result.data as any;
+				connectionTestError = data?.error || "Connection test failed";
+			} else {
+				connectionTestError = "Unexpected response from server";
+			}
+		};
 	}
 </script>
 
@@ -384,6 +423,91 @@
 								</Button>
 							</form>
 						</div>
+					</Card.Content>
+				</Card.Root>
+
+				<!-- Connection Health Card -->
+				<Card.Root class="rounded-xl border-border bg-card shadow-xs">
+					<Card.Header class="pb-3 border-b border-border">
+						<Card.Title class="text-base font-bold tracking-tight"
+							>Connection Health</Card.Title
+						>
+					</Card.Header>
+					<Card.Content class="p-5 space-y-3">
+						<p class="text-xs text-muted-foreground">
+							Verify that the datasource is reachable using its
+							stored configuration.
+						</p>
+
+						<!-- Connection Health Card -->
+						<button
+							type="submit"
+							form="test-connection-form"
+							disabled={isTestingConnection}
+							class="w-full inline-flex items-center justify-center gap-2 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-background hover:bg-accent text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+						>
+							{#if isTestingConnection}
+								<Loader2 class="size-3.5 animate-spin" />
+								<span>Testing connection...</span>
+							{:else}
+								<Cable class="size-3.5" />
+								<span>Test Connection</span>
+							{/if}
+						</button>
+
+						<!-- Connection test result feedback -->
+						{#if connectionTestResult}
+							<div
+								class="p-3 rounded-lg border text-xs space-y-1.5 {connectionTestResult.success
+									? 'bg-emerald-500/10 border-emerald-500/20'
+									: 'bg-destructive/10 border-destructive/20'}"
+							>
+								<div
+									class="flex items-center gap-1.5 font-medium"
+								>
+									{#if connectionTestResult.success}
+										<CheckCircle2
+											class="size-3.5 text-emerald-600 dark:text-emerald-400"
+										/>
+										<span
+											class="text-emerald-600 dark:text-emerald-400"
+											>Healthy</span
+										>
+									{:else}
+										<XCircle
+											class="size-3.5 text-destructive"
+										/>
+										<span class="text-destructive"
+											>Unreachable</span
+										>
+									{/if}
+								</div>
+								<p class="text-muted-foreground">
+									{connectionTestResult.message}
+								</p>
+								<p
+									class="font-mono text-[11px] text-muted-foreground"
+								>
+									Response time: {connectionTestResult.latencyMs}ms
+								</p>
+							</div>
+						{/if}
+
+						{#if connectionTestError}
+							<div
+								class="p-3 rounded-lg border border-destructive/20 bg-destructive/10 text-xs space-y-1"
+							>
+								<div
+									class="flex items-center gap-1.5 font-medium text-destructive"
+								>
+									<XCircle class="size-3.5" />
+									<span>Connection test failed</span>
+								</div>
+								<p class="text-muted-foreground">
+									{connectionTestError}
+								</p>
+							</div>
+						{/if}
 					</Card.Content>
 				</Card.Root>
 			</div>
@@ -738,16 +862,96 @@
 										</span>
 									{/if}
 								</div>
-								{#if isEditingConfig}
-									<Button
-										type="submit"
-										class="h-9 px-4 rounded-lg text-xs font-medium cursor-pointer"
-									>
-										<FileJson class="size-3.5 me-1.5" />
-										Save Configuration
-									</Button>
-								{/if}
+								<div class="flex items-center gap-2">
+									{#if hasConfig}
+										<button
+											type="submit"
+											form="test-connection-form"
+											disabled={isTestingConnection}
+											class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-background hover:bg-accent text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+										>
+											{#if isTestingConnection}
+												<Loader2
+													class="size-3.5 animate-spin"
+												/>
+												<span>Testing...</span>
+											{:else}
+												<Cable class="size-3.5" />
+												<span>Test Connection</span>
+											{/if}
+										</button>
+									{/if}
+									{#if isEditingConfig}
+										<Button
+											type="submit"
+											class="h-9 px-4 rounded-lg text-xs font-medium cursor-pointer"
+										>
+											<FileJson class="size-3.5 me-1.5" />
+											Save Configuration
+										</Button>
+									{/if}
+								</div>
 							</div>
+
+							<!-- Connection test result feedback (in config tab) -->
+							{#if connectionTestResult || connectionTestError}
+								<div class="mt-3">
+									{#if connectionTestResult}
+										<div
+											class="p-3 rounded-lg border text-xs space-y-1.5 {connectionTestResult.success
+												? 'bg-emerald-500/10 border-emerald-500/20'
+												: 'bg-destructive/10 border-destructive/20'}"
+										>
+											<div
+												class="flex items-center gap-1.5 font-medium"
+											>
+												{#if connectionTestResult.success}
+													<CheckCircle2
+														class="size-3.5 text-emerald-600 dark:text-emerald-400"
+													/>
+													<span
+														class="text-emerald-600 dark:text-emerald-400"
+														>Connection Healthy</span
+													>
+												{:else}
+													<XCircle
+														class="size-3.5 text-destructive"
+													/>
+													<span
+														class="text-destructive"
+														>Connection Unreachable</span
+													>
+												{/if}
+											</div>
+											<p class="text-muted-foreground">
+												{connectionTestResult.message}
+											</p>
+											<p
+												class="font-mono text-[11px] text-muted-foreground"
+											>
+												Response time: {connectionTestResult.latencyMs}ms
+											</p>
+										</div>
+									{/if}
+									{#if connectionTestError}
+										<div
+											class="p-3 rounded-lg border border-destructive/20 bg-destructive/10 text-xs space-y-1"
+										>
+											<div
+												class="flex items-center gap-1.5 font-medium text-destructive"
+											>
+												<XCircle class="size-3.5" />
+												<span
+													>Connection test failed</span
+												>
+											</div>
+											<p class="text-muted-foreground">
+												{connectionTestError}
+											</p>
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</form>
 					</Card.Content>
 				</Card.Root>
@@ -830,6 +1034,16 @@
 		</Tabs.Content>
 	</Tabs.Root>
 </div>
+
+<!-- Hidden form used by both the Overview and Config "Test Connection" buttons -->
+<form
+	id="test-connection-form"
+	action="?/testConnection"
+	method="POST"
+	use:enhance={enhanceTestConnection}
+	class="hidden"
+	aria-hidden="true"
+></form>
 
 <!-- Edit Datasource Modal -->
 <Dialog.Root bind:open={isEditOpen}>

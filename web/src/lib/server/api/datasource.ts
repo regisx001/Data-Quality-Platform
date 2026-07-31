@@ -42,6 +42,12 @@ export interface ConnectorConfigSchema {
     fields: ConfigField[];
 }
 
+export interface ConnectionTestResult {
+    success: boolean;
+    message: string;
+    latencyMs: number;
+}
+
 // ── Functions ───────────────────────────────────────────────────────────
 
 /**
@@ -211,4 +217,17 @@ export async function getDatasourceConfig(
     } catch {
         return null;
     }
+}
+
+/**
+ * Test connection for a datasource
+ * POST /api/v1/datasources/{id}/test-connection
+ */
+export async function testDatasourceConnection(
+    token: string,
+    id: string
+): Promise<ApiResult<ConnectionTestResult>> {
+    return apiFetchAuth(`/api/v1/datasources/${id}/test-connection`, token, {
+        method: "POST",
+    });
 }

@@ -1,15 +1,15 @@
 package com.regisx001.dQul.connector.postgres;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,22 +35,54 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
         this.sparkSessionProvider = sparkSessionProvider;
     }
 
+    // ── Plain JDBC for lightweight operations ────────────────────────────
+
     private Connection openConnection() throws SQLException {
         Properties props = new Properties();
         props.setProperty("user", config.username());
         props.setProperty("password", config.password());
-        props.setProperty("loginTimeout",
-                String.valueOf(config.connectionTimeoutMs() / 1000));
         if (config.ssl()) {
             props.setProperty("ssl", "true");
             props.setProperty("sslmode", "require");
         }
-        return DriverManager.getConnection(config.jdbcUrl(), props);
+        // Build URL with connection timeout
+        String url = config.jdbcUrl();
+        String timeoutParam = "connectTimeout=%d".formatted(config.connectionTimeoutMs() / 1000);
+        url += url.contains("?") ? "&" + timeoutParam : "?" + timeoutParam;
+        return DriverManager.getConnection(url, props);
     }
+
+    // ── Spark JDBC reader helpers ────────────────────────────────────────
+
+    private java.util.Map<String, String> jdbcOptions() {
+        java.util.Map<String, String> opts = new java.util.HashMap<>();
+        opts.put("url", config.jdbcUrl());
+        opts.put("user", config.username());
+        opts.put("password", config.password());
+        opts.put("fetchSize", String.valueOf(config.fetchSize()));
+        opts.put("pushDownPredicate", "true");
+        if (config.ssl()) {
+            opts.put("ssl", "true");
+            opts.put("sslmode", "require");
+        }
+        return opts;
+    }
+
+    private Dataset<Row> sparkQuery(String sql) {
+        SparkSession spark = sparkSessionProvider.get();
+        return spark.read()
+                .format("jdbc")
+                .options(jdbcOptions())
+                .option("query", sql)
+                .load();
+    }
+
+    // ── Connection testing (plain JDBC — lightweight) ────────────────────
 
     @Override
     public ConnectionTestResult testConnection() {
         long start = System.currentTimeMillis();
+        log.info("Testing PostgreSQL connection to {}:{}", config.host(), config.port());
         try (Connection conn = openConnection()) {
             boolean valid = conn.isValid(5);
             long elapsed = System.currentTimeMillis() - start;
@@ -64,48 +96,57 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
                     "PostgreSQL connection validation returned false", elapsed);
         } catch (SQLException e) {
             long elapsed = System.currentTimeMillis() - start;
+            log.warn("PostgreSQL connection test failed: {}", e.getMessage());
             return ConnectionTestResult.failure(
                     "PostgreSQL connection failed: " + e.getMessage(), elapsed);
         }
     }
 
+    // ── Dataset discovery (Spark) ────────────────────────────────────────
+
     @Override
     public List<DatasetDescriptor> discoverDatasets() {
         List<DatasetDescriptor> descriptors = new ArrayList<>();
-        String[] types = { "TABLE", "VIEW" };
 
-        try (Connection conn = openConnection()) {
-            DatabaseMetaData meta = conn.getMetaData();
-            try (ResultSet rs = meta.getTables(
-                    config.database(),
-                    config.schema(),
-                    "%",
-                    types)) {
+        try {
+            String sql = "SELECT table_name, table_type, "
+                    + "COALESCE(obj_description('%s.'.catalog || table_name::regclass, 'pg_class'), '') AS remarks "
+                            .formatted(escapeLiteral(config.schema()))
+                    + "FROM information_schema.tables "
+                    + "WHERE table_schema = '%s' "
+                            .formatted(escapeLiteral(config.schema()))
+                    + "AND table_type IN ('BASE TABLE', 'VIEW') "
+                    + "ORDER BY table_name";
 
-                while (rs.next()) {
-                    String tableName = rs.getString("TABLE_NAME");
-                    String tableType = rs.getString("TABLE_TYPE");
-                    String remarks = rs.getString("REMARKS");
+            log.info("Discovering datasets via Spark JDBC query");
+            Dataset<Row> df = sparkQuery(sql);
 
-                    DatasetType datasetType = "VIEW".equalsIgnoreCase(tableType)
-                            ? DatasetType.VIEW
-                            : DatasetType.TABLE;
+            for (Row row : df.collectAsList()) {
+                String tableName = row.getString(0);
+                String tableType = row.getString(1);
+                String remarks = row.getString(2);
 
-                    String id = "%s.%s".formatted(config.schema(), tableName);
+                DatasetType datasetType = "VIEW".equalsIgnoreCase(tableType)
+                        ? DatasetType.VIEW
+                        : DatasetType.TABLE;
 
-                    descriptors.add(new DatasetDescriptor(
-                            id, tableName, datasetType, remarks));
-                }
+                String id = "%s.%s".formatted(config.schema(), tableName);
+
+                descriptors.add(new DatasetDescriptor(
+                        id, tableName, datasetType, remarks));
             }
+
             log.info("Discovered {} datasets in schema '{}' of database '{}'",
                     descriptors.size(), config.schema(), config.database());
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             log.error("Failed to discover datasets in PostgreSQL: {}", e.getMessage(), e);
         }
 
         return descriptors;
     }
+
+    // ── Metadata retrieval (Spark) ───────────────────────────────────────
 
     @Override
     public DatasetMetadata getMetadata(String datasetId) {
@@ -116,47 +157,44 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
         List<ColumnMetadata> columns = new ArrayList<>();
         long estimatedRows = -1;
 
-        try (Connection conn = openConnection()) {
-            DatabaseMetaData meta = conn.getMetaData();
-            try (ResultSet rs = meta.getColumns(
-                    config.database(), schema, tableName, "%")) {
+        try {
+            // Column metadata via Spark
+            String colSql = "SELECT column_name, data_type, "
+                    + "is_nullable "
+                    + "FROM information_schema.columns "
+                    + "WHERE table_schema = '%s' AND table_name = '%s' "
+                            .formatted(escapeLiteral(schema), escapeLiteral(tableName))
+                    + "ORDER BY ordinal_position";
 
-                while (rs.next()) {
-                    String colName = rs.getString("COLUMN_NAME");
-                    int sqlType = rs.getInt("DATA_TYPE");
-                    int nullableFlag = rs.getInt("NULLABLE");
-                    int precision = rs.getInt("COLUMN_SIZE");
-                    if (rs.wasNull()) {
-                        precision = -1;
-                    }
-                    int scale = rs.getInt("DECIMAL_DIGITS");
-                    if (rs.wasNull()) {
-                        scale = -1;
-                    }
+            log.info("Retrieving column metadata via Spark JDBC query");
+            Dataset<Row> colDf = sparkQuery(colSql);
 
-                    columns.add(new ColumnMetadata(
-                            colName,
-                            mapSqlType(sqlType),
-                            nullableFlag == DatabaseMetaData.columnNullable,
-                            precision >= 0 ? precision : null,
-                            scale >= 0 ? scale : null));
-                }
+            for (Row row : colDf.collectAsList()) {
+                String colName = row.getString(0);
+                String pgDataType = row.getString(1);
+                String nullableStr = row.getString(2);
+
+                columns.add(new ColumnMetadata(
+                        colName,
+                        mapPgDataType(pgDataType),
+                        "YES".equalsIgnoreCase(nullableStr)));
             }
 
+            // Row count estimate via Spark
             String countSql = "SELECT reltuples::bigint AS estimate "
                     + "FROM pg_class WHERE relnamespace = "
                     + "(SELECT oid FROM pg_namespace WHERE nspname = '%s') "
-                    + "AND relname = '%s'".formatted(
-                            escapeIdentifier(schema), escapeIdentifier(tableName));
+                            .formatted(escapeLiteral(schema))
+                    + "AND relname = '%s'".formatted(escapeLiteral(tableName));
 
-            try (Statement stmt = conn.createStatement();
-                    ResultSet rs = stmt.executeQuery(countSql)) {
-                if (rs.next()) {
-                    estimatedRows = rs.getLong("estimate");
-                }
+            log.info("Retrieving row count estimate via Spark JDBC query");
+            Dataset<Row> countDf = sparkQuery(countSql);
+            Row countRow = countDf.head();
+            if (countRow != null && !countRow.isNullAt(0)) {
+                estimatedRows = countRow.getLong(0);
             }
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             log.error("Failed to retrieve metadata for '{}': {}",
                     datasetId, e.getMessage(), e);
         }
@@ -164,64 +202,75 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
         return new DatasetMetadata(tableName, columns, estimatedRows);
     }
 
+    // ── Data reader (Spark) ──────────────────────────────────────────────
+
     @Override
     public DataReader createReader(String datasetId) {
         String[] parts = datasetId.split("\\.", 2);
         String schema = parts.length > 1 ? parts[0] : config.schema();
         String tableName = parts.length > 1 ? parts[1] : datasetId;
 
-        return () -> sparkSessionProvider.get().read()
-                .format("jdbc")
-                .option("url", config.jdbcUrl())
-                .option("user", config.username())
-                .option("password", config.password())
-                .option("dbtable", "%s.%s".formatted(schema, tableName))
-                .option("fetchSize", String.valueOf(config.fetchSize()))
-                .option("pushDownPredicate", "true")
-                .load();
-    }
-
-    private static DataType mapSqlType(int sqlType) {
-        return switch (sqlType) {
-            case java.sql.Types.CHAR, java.sql.Types.VARCHAR,
-                    java.sql.Types.LONGVARCHAR, java.sql.Types.NCHAR,
-                    java.sql.Types.NVARCHAR, java.sql.Types.LONGNVARCHAR,
-                    java.sql.Types.CLOB, java.sql.Types.NCLOB ->
-                DataType.STRING;
-
-            case java.sql.Types.TINYINT, java.sql.Types.SMALLINT,
-                    java.sql.Types.INTEGER ->
-                DataType.INTEGER;
-
-            case java.sql.Types.BIGINT -> DataType.LONG;
-
-            case java.sql.Types.REAL, java.sql.Types.FLOAT,
-                    java.sql.Types.DOUBLE ->
-                DataType.DOUBLE;
-
-            case java.sql.Types.DECIMAL, java.sql.Types.NUMERIC -> DataType.DECIMAL;
-
-            case java.sql.Types.BIT, java.sql.Types.BOOLEAN -> DataType.BOOLEAN;
-
-            case java.sql.Types.DATE -> DataType.DATE;
-
-            case java.sql.Types.TIMESTAMP, java.sql.Types.TIMESTAMP_WITH_TIMEZONE,
-                    java.sql.Types.TIME, java.sql.Types.TIME_WITH_TIMEZONE ->
-                DataType.TIMESTAMP;
-
-            case java.sql.Types.BINARY, java.sql.Types.VARBINARY,
-                    java.sql.Types.LONGVARBINARY, java.sql.Types.BLOB ->
-                DataType.BINARY;
-
-            case java.sql.Types.ARRAY -> DataType.ARRAY;
-
-            case java.sql.Types.STRUCT, java.sql.Types.JAVA_OBJECT -> DataType.STRUCT;
-
-            default -> DataType.UNKNOWN;
+        return () -> {
+            SparkSession spark = sparkSessionProvider.get();
+            return spark.read()
+                    .format("jdbc")
+                    .options(jdbcOptions())
+                    .option("dbtable", "%s.%s".formatted(schema, tableName))
+                    .load();
         };
     }
 
-    private static String escapeIdentifier(String identifier) {
-        return identifier.replace("'", "''");
+    // ── Type mapping ────────────────────────────────────────────────────
+
+    private static DataType mapPgDataType(String pgType) {
+        if (pgType == null)
+            return DataType.UNKNOWN;
+        return switch (pgType.toLowerCase()) {
+            case "character varying", "character", "varchar",
+                    "char", "text", "name", "\"char\"" ->
+                DataType.STRING;
+
+            case "smallint", "integer", "int", "int4", "serial",
+                    "smallserial" ->
+                DataType.INTEGER;
+
+            case "bigint", "bigserial", "int8", "oid" ->
+                DataType.LONG;
+
+            case "real", "float4", "double precision", "float8", "float" ->
+                DataType.DOUBLE;
+
+            case "numeric", "decimal" ->
+                DataType.DECIMAL;
+
+            case "boolean", "bool" ->
+                DataType.BOOLEAN;
+
+            case "date" ->
+                DataType.DATE;
+
+            case "timestamp without time zone", "timestamp with time zone",
+                    "timestamp", "timestamptz",
+                    "time without time zone", "time with time zone",
+                    "time", "timetz" ->
+                DataType.TIMESTAMP;
+
+            case "bytea", "bit", "bit varying" ->
+                DataType.BINARY;
+
+            case "array", "json", "jsonb" ->
+                DataType.STRING;
+
+            default -> {
+                log.debug("Unmapped PostgreSQL type '{}', falling back to UNKNOWN", pgType);
+                yield DataType.UNKNOWN;
+            }
+        };
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+
+    private static String escapeLiteral(String s) {
+        return s.replace("'", "''");
     }
 }

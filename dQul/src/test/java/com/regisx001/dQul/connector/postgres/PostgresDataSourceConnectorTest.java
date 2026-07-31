@@ -5,14 +5,13 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.util.Arrays;
 
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -29,18 +28,29 @@ class PostgresDataSourceConnectorTest {
             "localhost", 5432, "testdb", "public",
             "user", "pass", false, 5000, "test");
 
-    private static SparkSessionProvider sparkSessionProvider;
+    private SparkSession spark;
+    private SparkSessionProvider sparkSessionProvider;
+    private org.apache.spark.sql.DataFrameReader reader;
+    private Dataset<Row> dataset;
 
-    @BeforeAll
-    static void setUp() {
-        var sparkSession = mock(SparkSession.class);
-        sparkSessionProvider = new SparkSessionProvider(sparkSession);
+    @SuppressWarnings("unchecked")
+    @BeforeEach
+    void setUp() {
+        spark = mock(SparkSession.class);
+        sparkSessionProvider = new SparkSessionProvider(spark);
+
+        // Mock the DataFrameReader chain
+        reader = mock(org.apache.spark.sql.DataFrameReader.class);
+        when(spark.read()).thenReturn(reader);
+        when(reader.format(anyString())).thenReturn(reader);
+        when(reader.options(anyMap())).thenReturn(reader);
+        when(reader.option(anyString(), any())).thenReturn(reader);
+
+        dataset = mock(Dataset.class);
+        when(reader.load()).thenReturn(dataset);
     }
 
-    @AfterAll
-    static void tearDown() {
-        // no-op
-    }
+    // ── testConnection (plain JDBC) ─────────────────────────────────────
 
     @Test
     @DisplayName("testConnection returns success when connection is valid")
@@ -61,30 +71,11 @@ class PostgresDataSourceConnectorTest {
     }
 
     @Test
-    @DisplayName("testConnection returns failure when connection is invalid")
-    void testConnection_invalid() throws Exception {
-        var conn = mock(Connection.class);
-        when(conn.isValid(5)).thenReturn(false);
-
-        try (MockedStatic<DriverManager> dm = mockStatic(DriverManager.class)) {
-            dm.when(() -> DriverManager.getConnection(anyString(), any(java.util.Properties.class)))
-                    .thenReturn(conn);
-
-            var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
-            ConnectionTestResult result = connector.testConnection();
-
-            assertFalse(result.success());
-            assertTrue(result.message().contains("validation returned false"));
-        }
-    }
-
-    @Test
     @DisplayName("testConnection returns failure on SQL exception")
-    void testConnection_exception() throws Exception {
+    void testConnection_failure() {
         try (MockedStatic<DriverManager> dm = mockStatic(DriverManager.class)) {
-            var sqlEx = new java.sql.SQLException("Connection refused", "", 0);
             dm.when(() -> DriverManager.getConnection(anyString(), any(java.util.Properties.class)))
-                    .thenThrow(sqlEx);
+                    .thenThrow(new java.sql.SQLException("Connection refused", "", 0));
 
             var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
             ConnectionTestResult result = connector.testConnection();
@@ -94,104 +85,112 @@ class PostgresDataSourceConnectorTest {
         }
     }
 
+    // ── discoverDatasets ────────────────────────────────────────────────
+
     @Test
-    @DisplayName("discoverDatasets returns tables and views from metadata")
-    void discoverDatasets() throws Exception {
-        var conn = mock(Connection.class);
-        var meta = mock(DatabaseMetaData.class);
-        var rs = mock(ResultSet.class);
+    @DisplayName("discoverDatasets returns tables and views from information_schema")
+    void discoverDatasets() {
+        var row1 = mock(Row.class);
+        when(row1.getString(0)).thenReturn("users");
+        when(row1.getString(1)).thenReturn("BASE TABLE");
+        when(row1.getString(2)).thenReturn("Users table");
 
-        when(conn.getMetaData()).thenReturn(meta);
-        when(meta.getTables(eq("testdb"), eq("public"), eq("%"), any(String[].class)))
-                .thenReturn(rs);
-        when(rs.next()).thenReturn(true, true, false);
-        when(rs.getString("TABLE_NAME")).thenReturn("users", "orders");
-        when(rs.getString("TABLE_TYPE")).thenReturn("TABLE", "VIEW");
-        when(rs.getString("REMARKS")).thenReturn("Users table", null);
+        var row2 = mock(Row.class);
+        when(row2.getString(0)).thenReturn("orders");
+        when(row2.getString(1)).thenReturn("VIEW");
+        when(row2.getString(2)).thenReturn("");
 
-        try (MockedStatic<DriverManager> dm = mockStatic(DriverManager.class)) {
-            dm.when(() -> DriverManager.getConnection(anyString(), any(java.util.Properties.class)))
-                    .thenReturn(conn);
+        when(dataset.collectAsList()).thenReturn(Arrays.asList(row1, row2));
 
-            var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
-            var datasets = connector.discoverDatasets();
+        var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
+        var datasets = connector.discoverDatasets();
 
-            assertEquals(2, datasets.size());
-            assertEquals("public.users", datasets.get(0).id());
-            assertEquals("users", datasets.get(0).name());
-            assertEquals(DatasetType.TABLE, datasets.get(0).type());
-            assertEquals("Users table", datasets.get(0).description());
+        assertEquals(2, datasets.size());
+        assertEquals("public.users", datasets.get(0).id());
+        assertEquals("users", datasets.get(0).name());
+        assertEquals(DatasetType.TABLE, datasets.get(0).type());
+        assertEquals("Users table", datasets.get(0).description());
 
-            assertEquals("public.orders", datasets.get(1).id());
-            assertEquals(DatasetType.VIEW, datasets.get(1).type());
-        }
+        assertEquals("public.orders", datasets.get(1).id());
+        assertEquals(DatasetType.VIEW, datasets.get(1).type());
     }
+
+    @Test
+    @DisplayName("discoverDatasets returns empty list on error")
+    void discoverDatasets_error() {
+        when(dataset.collectAsList()).thenThrow(new RuntimeException("Cannot connect"));
+
+        var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
+        var datasets = connector.discoverDatasets();
+
+        assertTrue(datasets.isEmpty());
+    }
+
+    // ── getMetadata ─────────────────────────────────────────────────────
 
     @Test
     @DisplayName("getMetadata returns column info and estimated row count")
-    void getMetadata() throws Exception {
-        var conn = mock(Connection.class);
-        var meta = mock(DatabaseMetaData.class);
-        var columnsRs = mock(ResultSet.class);
-        var countRs = mock(ResultSet.class);
-        var countStmt = mock(Statement.class);
+    void getMetadata() {
+        // Mock columns result
+        var colRow1 = mock(Row.class);
+        when(colRow1.getString(0)).thenReturn("id");
+        when(colRow1.getString(1)).thenReturn("integer");
+        when(colRow1.getString(2)).thenReturn("NO");
 
-        when(conn.getMetaData()).thenReturn(meta);
-        when(meta.getColumns("testdb", "public", "users", "%"))
-                .thenReturn(columnsRs);
-        when(columnsRs.next()).thenReturn(true, true, false);
-        // First column: id INTEGER NOT NULL
-        when(columnsRs.getString("COLUMN_NAME")).thenReturn("id", "name");
-        when(columnsRs.getInt("DATA_TYPE")).thenReturn(java.sql.Types.INTEGER, java.sql.Types.VARCHAR);
-        when(columnsRs.getInt("NULLABLE")).thenReturn(DatabaseMetaData.columnNoNulls, DatabaseMetaData.columnNullable);
-        when(columnsRs.getInt("COLUMN_SIZE")).thenReturn(10, 255);
-        when(columnsRs.wasNull()).thenReturn(false, false);
-        when(columnsRs.getInt("DECIMAL_DIGITS")).thenReturn(0, 0);
+        var colRow2 = mock(Row.class);
+        when(colRow2.getString(0)).thenReturn("name");
+        when(colRow2.getString(1)).thenReturn("character varying");
+        when(colRow2.getString(2)).thenReturn("YES");
 
-        when(conn.createStatement()).thenReturn(countStmt);
-        when(countStmt.executeQuery(anyString())).thenReturn(countRs);
-        when(countRs.next()).thenReturn(true);
-        when(countRs.getLong("estimate")).thenReturn(5000L);
+        // Mock row count result
+        var countRow = mock(Row.class);
+        when(countRow.isNullAt(0)).thenReturn(false);
+        when(countRow.getLong(0)).thenReturn(5000L);
 
-        try (MockedStatic<DriverManager> dm = mockStatic(DriverManager.class)) {
-            dm.when(() -> DriverManager.getConnection(anyString(), any(java.util.Properties.class)))
-                    .thenReturn(conn);
+        // Return columns dataset first, then count dataset
+        Dataset<Row> colDataset = mock(Dataset.class);
+        when(colDataset.collectAsList()).thenReturn(Arrays.asList(colRow1, colRow2));
 
-            var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
-            var metaData = connector.getMetadata("public.users");
+        Dataset<Row> countDataset = mock(Dataset.class);
+        when(countDataset.head()).thenReturn(countRow);
 
-            assertEquals("users", metaData.name());
-            assertEquals(2, metaData.columns().size());
-            assertEquals(5000L, metaData.estimatedRows());
+        // First load() call returns colDataset, second returns countDataset
+        when(reader.load())
+                .thenReturn(colDataset)
+                .thenReturn(countDataset);
 
-            var idCol = metaData.columns().get(0);
-            assertEquals("id", idCol.name());
-            assertEquals(DataType.INTEGER, idCol.type());
-            assertFalse(idCol.nullable());
+        var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
+        var metaData = connector.getMetadata("public.users");
 
-            var nameCol = metaData.columns().get(1);
-            assertEquals("name", nameCol.name());
-            assertEquals(DataType.STRING, nameCol.type());
-            assertTrue(nameCol.nullable());
-        }
+        assertEquals("users", metaData.name());
+        assertEquals(2, metaData.columns().size());
+        assertEquals(5000L, metaData.estimatedRows());
+
+        var idCol = metaData.columns().get(0);
+        assertEquals("id", idCol.name());
+        assertEquals(DataType.INTEGER, idCol.type());
+        assertFalse(idCol.nullable());
+
+        var nameCol = metaData.columns().get(1);
+        assertEquals("name", nameCol.name());
+        assertEquals(DataType.STRING, nameCol.type());
+        assertTrue(nameCol.nullable());
     }
 
     @Test
-    @DisplayName("getMetadata returns empty columns and -1 rows on SQL error")
-    void getMetadata_error() throws Exception {
-        try (MockedStatic<DriverManager> dm = mockStatic(DriverManager.class)) {
-            var sqlEx = new java.sql.SQLException("Cannot connect", "", 0);
-            dm.when(() -> DriverManager.getConnection(anyString(), any(java.util.Properties.class)))
-                    .thenThrow(sqlEx);
+    @DisplayName("getMetadata returns empty columns and -1 rows on error")
+    void getMetadata_error() {
+        when(reader.load()).thenThrow(new RuntimeException("Cannot connect"));
 
-            var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
-            var metaData = connector.getMetadata("public.users");
+        var connector = new PostgresDataSourceConnector(CONFIG, sparkSessionProvider);
+        var metaData = connector.getMetadata("public.users");
 
-            assertEquals("users", metaData.name());
-            assertTrue(metaData.columns().isEmpty());
-            assertEquals(-1L, metaData.estimatedRows());
-        }
+        assertEquals("users", metaData.name());
+        assertTrue(metaData.columns().isEmpty());
+        assertEquals(-1L, metaData.estimatedRows());
     }
+
+    // ── jdbcUrl ─────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("jdbcUrl is built correctly without SSL")

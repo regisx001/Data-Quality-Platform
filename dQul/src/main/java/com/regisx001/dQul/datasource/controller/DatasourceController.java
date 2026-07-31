@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.regisx001.dQul.common.responses.ApiErrorResponse;
 import com.regisx001.dQul.connector.ConnectorConfigSchema;
 import com.regisx001.dQul.connector.ConnectorConfigSchemaService;
+import com.regisx001.dQul.connector.api.ConnectionTestResult;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.service.DatasourceService;
@@ -235,6 +236,22 @@ public class DatasourceController {
             }
             return ResponseEntity.ok(
                     new SaveConfigRequest(config));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    // ── Connection Testing ──────────────────────────────────────────────
+
+    @PostMapping("/{id}/test-connection")
+    public ResponseEntity<?> testConnection(@PathVariable UUID id) {
+        try {
+            ConnectionTestResult result = datasourceService.testConnection(id);
+            return ResponseEntity.ok(result);
         } catch (EntityNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiErrorResponse.builder()

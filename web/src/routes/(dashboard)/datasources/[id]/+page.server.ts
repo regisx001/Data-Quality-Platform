@@ -8,6 +8,7 @@ import {
 	saveDatasourceConfig,
 	getDatasourceConfig,
 	getConfigSchemas,
+	testDatasourceConnection,
 	type DatasourceStatus
 } from "$lib/server/api";
 
@@ -144,5 +145,33 @@ export const actions: Actions = {
 			message: "Datasource configuration saved successfully!",
 			configJson
 		};
+	},
+
+	testConnection: async ({ locals, params }) => {
+		if (!locals.user || !locals.token) {
+			throw redirect(303, "/login");
+		}
+
+		try {
+			const result = await testDatasourceConnection(locals.token, params.id);
+
+			if (!result.ok) {
+				return fail(result.status || 400, {
+					error: result.error,
+					action: "testConnection"
+				});
+			}
+
+			return {
+				success: true,
+				message: result.data.message,
+				connectionTest: result.data
+			};
+		} catch (err: any) {
+			return fail(500, {
+				error: err.message || "Connection test failed due to an unexpected error",
+				action: "testConnection"
+			});
+		}
 	}
 };
