@@ -1,0 +1,3 @@
+Spark is a unified engine for data processing.
+Apache Spark provides high-level APIs in Java, Scala, Python and R.
+Data Quality Platform powered by Spark.

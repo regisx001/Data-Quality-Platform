@@ -14,25 +14,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.regisx001.dQul.compute.spark.SparkSessionProvider;
+import com.regisx001.dQul.connector.ConnectorConfig;
+import com.regisx001.dQul.connector.DataSourceConnector;
 import com.regisx001.dQul.connector.api.ColumnMetadata;
 import com.regisx001.dQul.connector.api.ConnectionTestResult;
-import com.regisx001.dQul.connector.api.DataReader;
-import com.regisx001.dQul.connector.api.DataSourceConnector;
 import com.regisx001.dQul.connector.api.DataType;
 import com.regisx001.dQul.connector.api.DatasetDescriptor;
 import com.regisx001.dQul.connector.api.DatasetMetadata;
-import com.regisx001.dQul.connector.api.CsvConnectorConfig;
 import com.regisx001.dQul.connector.api.DatasetType;
 
 public class CsvDataSourceConnector implements DataSourceConnector {
 
     private static final Logger log = LoggerFactory.getLogger(CsvDataSourceConnector.class);
 
-    private final CsvConnectorConfig config;
+    private final ConnectorConfig.Csv config;
     private final Path filePath;
     private final SparkSessionProvider sparkSessionProvider;
 
-    public CsvDataSourceConnector(CsvConnectorConfig config, SparkSessionProvider sparkSessionProvider) {
+    public CsvDataSourceConnector(ConnectorConfig.Csv config, SparkSessionProvider sparkSessionProvider) {
         this.config = config;
         this.sparkSessionProvider = sparkSessionProvider;
         this.filePath = Paths.get(config.filePath()).toAbsolutePath().normalize();

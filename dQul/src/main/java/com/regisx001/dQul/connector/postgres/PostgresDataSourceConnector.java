@@ -14,24 +14,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.regisx001.dQul.compute.spark.SparkSessionProvider;
+import com.regisx001.dQul.connector.ConnectorConfig;
+import com.regisx001.dQul.connector.DataSourceConnector;
 import com.regisx001.dQul.connector.api.ColumnMetadata;
 import com.regisx001.dQul.connector.api.ConnectionTestResult;
-import com.regisx001.dQul.connector.api.DataReader;
-import com.regisx001.dQul.connector.api.DataSourceConnector;
 import com.regisx001.dQul.connector.api.DataType;
 import com.regisx001.dQul.connector.api.DatasetDescriptor;
 import com.regisx001.dQul.connector.api.DatasetMetadata;
 import com.regisx001.dQul.connector.api.DatasetType;
-import com.regisx001.dQul.connector.api.PostgresConnectorConfig;
 
 public class PostgresDataSourceConnector implements DataSourceConnector {
 
     private static final Logger log = LoggerFactory.getLogger(PostgresDataSourceConnector.class);
 
-    private final PostgresConnectorConfig config;
+    private final ConnectorConfig.Postgres config;
     private final SparkSessionProvider sparkSessionProvider;
 
-    public PostgresDataSourceConnector(PostgresConnectorConfig config, SparkSessionProvider sparkSessionProvider) {
+    public PostgresDataSourceConnector(ConnectorConfig.Postgres config, SparkSessionProvider sparkSessionProvider) {
         this.config = config;
         this.sparkSessionProvider = sparkSessionProvider;
     }
