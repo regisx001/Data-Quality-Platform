@@ -13,7 +13,8 @@ import com.regisx001.dQul.connector.api.DatasetMetadata;
 /**
  * Combined connector interface for data source connectivity.
  *
- * <p>Implementations provide metadata discovery, connection testing,
+ * <p>
+ * Implementations provide metadata discovery, connection testing,
  * and the ability to create Spark {@link Dataset DataFrames} from
  * a datasource.
  */
@@ -35,10 +36,12 @@ public interface DataSourceConnector {
     DataReader createReader(String datasetId);
 
     // ──────────────────────────────────────────────
-    //  Nested reader type
+    // Nested reader type
     // ──────────────────────────────────────────────
 
-    /** Abstraction that produces a Spark DataFrame from a connector-backed source. */
+    /**
+     * Abstraction that produces a Spark DataFrame from a connector-backed source.
+     */
     @FunctionalInterface
     interface DataReader {
         /** Reads the dataset into a Spark {@link Dataset<Row>}. */

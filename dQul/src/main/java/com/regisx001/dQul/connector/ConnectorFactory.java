@@ -32,7 +32,8 @@ public class ConnectorFactory {
     }
 
     /**
-     * Creates a default {@link ConnectorConfig.Postgres} using configuration properties.
+     * Creates a default {@link ConnectorConfig.Postgres} using configuration
+     * properties.
      *
      * @param datasourceName human-readable name
      * @return Postgres config populated from application properties

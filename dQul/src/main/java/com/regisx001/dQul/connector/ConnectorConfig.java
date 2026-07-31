@@ -3,7 +3,8 @@ package com.regisx001.dQul.connector;
 /**
  * Configuration for a data source connector.
  *
- * <p>This sealed type has two permitted subtypes:
+ * <p>
+ * This sealed type has two permitted subtypes:
  * {@link Csv} for CSV file sources and {@link Postgres} for PostgreSQL sources.
  */
 public sealed interface ConnectorConfig {
@@ -12,7 +13,7 @@ public sealed interface ConnectorConfig {
     String datasourceName();
 
     // ──────────────────────────────────────────────
-    //  CSV configuration
+    // CSV configuration
     // ──────────────────────────────────────────────
 
     /**
@@ -34,7 +35,7 @@ public sealed interface ConnectorConfig {
     }
 
     // ──────────────────────────────────────────────
-    //  PostgreSQL configuration
+    // PostgreSQL configuration
     // ──────────────────────────────────────────────
 
     /**
@@ -61,7 +62,7 @@ public sealed interface ConnectorConfig {
         }
 
         public Postgres(String host, String database, String username,
-                        String password, String datasourceName) {
+                String password, String datasourceName) {
             this(host, 5432, database, "public", username, password,
                     false, 30_000, 10_000, datasourceName);
         }

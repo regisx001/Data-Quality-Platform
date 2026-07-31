@@ -26,7 +26,8 @@ class SparkProviderUnitTest {
 
     @AfterAll
     static void tearDown() {
-        if (sparkSession != null) sparkSession.stop();
+        if (sparkSession != null)
+            sparkSession.stop();
     }
 
     @Test

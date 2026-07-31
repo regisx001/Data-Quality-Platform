@@ -22,8 +22,7 @@ class DataTypeTest {
                 () -> assertEquals(DataType.BINARY, DataType.valueOf("BINARY")),
                 () -> assertEquals(DataType.ARRAY, DataType.valueOf("ARRAY")),
                 () -> assertEquals(DataType.STRUCT, DataType.valueOf("STRUCT")),
-                () -> assertEquals(DataType.UNKNOWN, DataType.valueOf("UNKNOWN"))
-        );
+                () -> assertEquals(DataType.UNKNOWN, DataType.valueOf("UNKNOWN")));
     }
 
     @Test
@@ -35,7 +34,6 @@ class DataTypeTest {
                 () -> assertEquals(DatasetType.COLLECTION, DatasetType.valueOf("COLLECTION")),
                 () -> assertEquals(DatasetType.FILE, DatasetType.valueOf("FILE")),
                 () -> assertEquals(DatasetType.QUERY, DatasetType.valueOf("QUERY")),
-                () -> assertEquals(DatasetType.UNKNOWN, DatasetType.valueOf("UNKNOWN"))
-        );
+                () -> assertEquals(DatasetType.UNKNOWN, DatasetType.valueOf("UNKNOWN")));
     }
 }
