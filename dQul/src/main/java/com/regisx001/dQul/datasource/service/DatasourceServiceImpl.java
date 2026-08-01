@@ -1,6 +1,7 @@
 package com.regisx001.dQul.datasource.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,6 +15,10 @@ import com.regisx001.dQul.connector.ConnectorConfig;
 import com.regisx001.dQul.connector.ConnectorFactory;
 import com.regisx001.dQul.connector.DataSourceConnector;
 import com.regisx001.dQul.connector.api.ConnectionTestResult;
+import com.regisx001.dQul.connector.api.DatasetDescriptor;
+import com.regisx001.dQul.dataset.domain.Dataset;
+import com.regisx001.dQul.dataset.domain.DatasetStatus;
+import com.regisx001.dQul.dataset.repository.DatasetRepository;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.repository.DatasourceRepository;
@@ -24,12 +29,15 @@ import jakarta.persistence.EntityNotFoundException;
 public class DatasourceServiceImpl implements DatasourceService {
 
     private final DatasourceRepository datasourceRepository;
+    private final DatasetRepository datasetRepository;
     private final ConnectorFactory connectorFactory;
     private final ObjectMapper objectMapper;
 
     public DatasourceServiceImpl(DatasourceRepository datasourceRepository,
+            DatasetRepository datasetRepository,
             ConnectorFactory connectorFactory, ObjectMapper objectMapper) {
         this.datasourceRepository = datasourceRepository;
+        this.datasetRepository = datasetRepository;
         this.connectorFactory = connectorFactory;
         this.objectMapper = objectMapper;
     }
@@ -194,6 +202,73 @@ public class DatasourceServiceImpl implements DatasourceService {
 
         DataSourceConnector connector = connectorFactory.createConnector(config);
         return connector.testConnection();
+    }
+
+    // ── Dataset Discovery & Import ───────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DatasetDescriptor> discoverDatasets(UUID id) {
+        Datasource datasource = getDatasourceById(id);
+        String configJson = datasource.getConfigJson();
+
+        if (configJson == null || configJson.isBlank()) {
+            throw new IllegalArgumentException(
+                    "No configuration saved for datasource '" + datasource.getName() + "'");
+        }
+
+        ConnectorConfig config = parseConfig(datasource.getType(), configJson, datasource.getName());
+        DataSourceConnector connector = connectorFactory.createConnector(config);
+        return connector.discoverDatasets();
+    }
+
+    @Override
+    public List<Dataset> importDatasets(UUID id, List<String> datasetIds) {
+        Datasource datasource = getDatasourceById(id);
+        if (datasetIds == null || datasetIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<DatasetDescriptor> descriptors = List.of();
+        try {
+            descriptors = discoverDatasets(id);
+        } catch (Exception ignored) {
+        }
+
+        java.util.Map<String, DatasetDescriptor> descriptorMap = new java.util.HashMap<>();
+        for (DatasetDescriptor d : descriptors) {
+            if (d.name() != null)
+                descriptorMap.put(d.name(), d);
+            if (d.id() != null)
+                descriptorMap.put(d.id(), d);
+        }
+
+        List<Dataset> imported = new ArrayList<>();
+        for (String datasetName : datasetIds) {
+            String trimmedName = datasetName.trim();
+            if (trimmedName.isEmpty())
+                continue;
+
+            DatasetDescriptor descriptor = descriptorMap.get(trimmedName);
+            Long rowCount = descriptor != null ? descriptor.rowCount() : null;
+
+            Dataset dataset = datasetRepository.findByDatasourceIdAndName(id, trimmedName)
+                    .orElseGet(() -> Dataset.builder()
+                            .name(trimmedName)
+                            .type(datasource.getType())
+                            .status(DatasetStatus.ACTIVE)
+                            .datasource(datasource)
+                            .lastDiscovered(LocalDateTime.now())
+                            .build());
+
+            dataset.setLastDiscovered(LocalDateTime.now());
+            if (rowCount != null) {
+                dataset.setRowCount(rowCount);
+            }
+            imported.add(datasetRepository.save(dataset));
+        }
+
+        return imported;
     }
 
     /**

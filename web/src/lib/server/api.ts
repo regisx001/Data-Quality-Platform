@@ -26,6 +26,8 @@ export {
 	saveDatasourceConfig,
 	getDatasourceConfig,
 	testDatasourceConnection,
+	discoverDatasourceDatasets,
+	importDatasourceDatasets,
 } from "./api/datasource";
 export type {
 	Datasource,
@@ -34,4 +36,5 @@ export type {
 	ConfigField,
 	ConnectorConfigSchema,
 	ConnectionTestResult,
+	DatasetDescriptor,
 } from "./api/datasource";

@@ -48,6 +48,14 @@ export interface ConnectionTestResult {
     latencyMs: number;
 }
 
+export interface DatasetDescriptor {
+    id: string;
+    name: string;
+    type: "TABLE" | "VIEW" | "FILE";
+    description?: string;
+    rowCount?: number;
+}
+
 // ── Functions ───────────────────────────────────────────────────────────
 
 /**
@@ -229,5 +237,33 @@ export async function testDatasourceConnection(
 ): Promise<ApiResult<ConnectionTestResult>> {
     return apiFetchAuth(`/api/v1/datasources/${id}/test-connection`, token, {
         method: "POST",
+    });
+}
+
+/**
+ * Discover datasets (tables/views/files) exposed by a datasource
+ * GET /api/v1/datasources/{id}/discover-datasets
+ */
+export async function discoverDatasourceDatasets(
+    token: string,
+    id: string
+): Promise<ApiResult<DatasetDescriptor[]>> {
+    return apiFetchAuth(`/api/v1/datasources/${id}/discover-datasets`, token, {
+        method: "GET",
+    });
+}
+
+/**
+ * Import selected discovered datasets into managed entities
+ * POST /api/v1/datasources/{id}/import-datasets
+ */
+export async function importDatasourceDatasets(
+    token: string,
+    id: string,
+    datasetIds: string[]
+): Promise<ApiResult<Dataset[]>> {
+    return apiFetchAuth(`/api/v1/datasources/${id}/import-datasets`, token, {
+        method: "POST",
+        body: JSON.stringify({ datasetIds }),
     });
 }

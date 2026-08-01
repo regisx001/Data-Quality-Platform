@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.regisx001.dQul.dataset.domain.Dataset;
 
 import jakarta.persistence.CascadeType;
@@ -58,6 +59,7 @@ public class Datasource {
 
     @OneToMany(mappedBy = "datasource", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnoreProperties("datasource")
     private List<Dataset> datasets = new ArrayList<>();
 
     public void addDataset(Dataset dataset) {

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.rules.domain.QualityRule;
 import com.regisx001.dQul.validation.domain.Validation;
@@ -56,6 +57,8 @@ public class Dataset {
 
     private LocalDateTime lastValidated;
 
+    private Long rowCount;
+
     private String domain;
 
     private String tags;
@@ -64,14 +67,17 @@ public class Dataset {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "datasource_id", nullable = false)
+    @JsonIgnoreProperties("datasets")
     private Datasource datasource;
 
     @OneToMany(mappedBy = "dataset", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnoreProperties("dataset")
     private List<QualityRule> qualityRules = new ArrayList<>();
 
     @OneToMany(mappedBy = "dataset", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnoreProperties("dataset")
     private List<Validation> validations = new ArrayList<>();
 
     public void addQualityRule(QualityRule rule) {

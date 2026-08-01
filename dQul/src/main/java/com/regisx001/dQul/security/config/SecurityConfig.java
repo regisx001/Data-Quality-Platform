@@ -31,8 +31,9 @@ public class SecurityConfig {
                                 .cors(Customizer.withDefaults())
                                 .csrf(csrf -> csrf.disable())
                                 .authorizeHttpRequests(authorize -> authorize
-                                                .requestMatchers("/api/v1/auth/**", "/api/v1/spark/demo/**", "/h2-console/**",
-                                                                "/uploads/**", "/actuator/**")
+                                                .requestMatchers("/api/v1/auth/**", "/api/v1/spark/demo/**",
+                                                                "/h2-console/**",
+                                                                "/uploads/**", "/actuator/**", "/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .sessionManagement(session -> session

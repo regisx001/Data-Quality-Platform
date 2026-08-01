@@ -1,0 +1,1 @@
+ALTER TABLE datasets ADD COLUMN IF NOT EXISTS row_count BIGINT;

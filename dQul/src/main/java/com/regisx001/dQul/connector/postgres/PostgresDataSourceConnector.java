@@ -2,6 +2,8 @@ package com.regisx001.dQul.connector.postgres;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,42 +104,60 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
         }
     }
 
-    // ── Dataset discovery (Spark) ────────────────────────────────────────
+    // ── Dataset discovery (Plain JDBC — lightweight) ─────────────────────
 
     @Override
     public List<DatasetDescriptor> discoverDatasets() {
         List<DatasetDescriptor> descriptors = new ArrayList<>();
+        String targetSchema = (config.schema() != null && !config.schema().isBlank())
+                ? config.schema()
+                : "public";
 
-        try {
-            String sql = "SELECT table_name, table_type, "
-                    + "COALESCE(obj_description('%s.'.catalog || table_name::regclass, 'pg_class'), '') AS remarks "
-                            .formatted(escapeLiteral(config.schema()))
-                    + "FROM information_schema.tables "
-                    + "WHERE table_schema = '%s' "
-                            .formatted(escapeLiteral(config.schema()))
-                    + "AND table_type IN ('BASE TABLE', 'VIEW') "
-                    + "ORDER BY table_name";
+        String sql = """
+            SELECT
+                t.table_schema,
+                t.table_name,
+                t.table_type,
+                pg_get_userbyid(c.relowner) AS owner,
+                COALESCE(obj_description(c.oid), '') AS remarks,
+                pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+                COALESCE(s.n_live_tup, 0) AS estimated_rows
+            FROM information_schema.tables t
+            JOIN pg_namespace n ON n.nspname = t.table_schema
+            JOIN pg_class c ON c.relnamespace = n.oid AND c.relname = t.table_name
+            LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+            WHERE t.table_schema = ?
+              AND t.table_type IN ('BASE TABLE', 'VIEW')
+            ORDER BY t.table_name
+            """;
 
-            log.info("Discovering datasets via Spark JDBC query");
-            Dataset<Row> df = sparkQuery(sql);
+        log.info("Discovering datasets in PostgreSQL schema '{}'", targetSchema);
 
-            for (Row row : df.collectAsList()) {
-                String tableName = row.getString(0);
-                String tableType = row.getString(1);
-                String remarks = row.getString(2);
+        try (Connection conn = openConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-                DatasetType datasetType = "VIEW".equalsIgnoreCase(tableType)
-                        ? DatasetType.VIEW
-                        : DatasetType.TABLE;
+            stmt.setString(1, targetSchema);
 
-                String id = "%s.%s".formatted(config.schema(), tableName);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String tableName = rs.getString("table_name");
+                    String tableType = rs.getString("table_type");
+                    String remarks = rs.getString("remarks");
+                    long rowCount = rs.getLong("estimated_rows");
 
-                descriptors.add(new DatasetDescriptor(
-                        id, tableName, datasetType, remarks));
+                    DatasetType datasetType = "VIEW".equalsIgnoreCase(tableType)
+                            ? DatasetType.VIEW
+                            : DatasetType.TABLE;
+
+                    String id = "%s.%s".formatted(targetSchema, tableName);
+
+                    descriptors.add(new DatasetDescriptor(
+                            id, tableName, datasetType, remarks, rowCount));
+                }
             }
 
             log.info("Discovered {} datasets in schema '{}' of database '{}'",
-                    descriptors.size(), config.schema(), config.database());
+                    descriptors.size(), targetSchema, config.database());
 
         } catch (Exception e) {
             log.error("Failed to discover datasets in PostgreSQL: {}", e.getMessage(), e);

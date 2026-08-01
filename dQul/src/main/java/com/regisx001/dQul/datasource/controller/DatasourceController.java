@@ -19,6 +19,8 @@ import com.regisx001.dQul.common.responses.ApiErrorResponse;
 import com.regisx001.dQul.connector.ConnectorConfigSchema;
 import com.regisx001.dQul.connector.ConnectorConfigSchemaService;
 import com.regisx001.dQul.connector.api.ConnectionTestResult;
+import com.regisx001.dQul.connector.api.DatasetDescriptor;
+import com.regisx001.dQul.dataset.domain.Dataset;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.service.DatasourceService;
@@ -261,6 +263,56 @@ public class DatasourceController {
         }
     }
 
+    // ── Dataset Discovery & Import ───────────────────────────────────────
+
+    @GetMapping("/{id}/discover-datasets")
+    public ResponseEntity<?> discoverDatasets(@PathVariable UUID id) {
+        try {
+            List<DatasetDescriptor> datasets = datasourceService.discoverDatasets(id);
+            return ResponseEntity.ok(datasets);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message(e.getMessage())
+                            .build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .message(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                            .message("Failed to discover datasets: " + e.getMessage())
+                            .build());
+        }
+    }
+
+    @PostMapping("/{id}/import-datasets")
+    public ResponseEntity<?> importDatasets(
+            @PathVariable UUID id,
+            @RequestBody ImportDatasetsRequest request) {
+        try {
+            List<Dataset> imported = datasourceService.importDatasets(id, request.datasetIds());
+            return ResponseEntity.ok(imported);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message(e.getMessage())
+                            .build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
     // ── Inner DTOs ───────────────────────────────────────────────────────
 
     public record CreateDatasourceRequest(
@@ -278,5 +330,8 @@ public class DatasourceController {
     }
 
     public record SaveConfigRequest(String configJson) {
+    }
+
+    public record ImportDatasetsRequest(List<String> datasetIds) {
     }
 }

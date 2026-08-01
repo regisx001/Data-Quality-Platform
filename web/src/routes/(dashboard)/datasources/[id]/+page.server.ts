@@ -9,6 +9,8 @@ import {
 	getDatasourceConfig,
 	getConfigSchemas,
 	testDatasourceConnection,
+	discoverDatasourceDatasets,
+	importDatasourceDatasets,
 	type DatasourceStatus
 } from "$lib/server/api";
 
@@ -177,6 +179,73 @@ export const actions: Actions = {
 			return fail(500, {
 				error: err.message || "Connection test failed due to an unexpected error",
 				action: "testConnection"
+			});
+		}
+	},
+
+	discoverDatasets: async ({ locals, params }) => {
+		if (!locals.user || !locals.token) {
+			throw redirect(303, "/login");
+		}
+
+		try {
+			const result = await discoverDatasourceDatasets(locals.token, params.id);
+
+			if (!result.ok) {
+				return fail(result.status || 400, {
+					error: result.error,
+					action: "discoverDatasets"
+				});
+			}
+
+			return {
+				success: true,
+				discoveredDatasets: result.data,
+				action: "discoverDatasets"
+			};
+		} catch (err: any) {
+			return fail(500, {
+				error: err.message || "Failed to discover datasets",
+				action: "discoverDatasets"
+			});
+		}
+	},
+
+	importDatasets: async ({ request, locals, params }) => {
+		if (!locals.user || !locals.token) {
+			throw redirect(303, "/login");
+		}
+
+		try {
+			const formData = await request.formData();
+			const datasetIds = formData.getAll("datasetIds").map(id => id.toString());
+
+			if (datasetIds.length === 0) {
+				return fail(400, {
+					error: "No datasets selected for import",
+					action: "importDatasets"
+				});
+			}
+
+			const result = await importDatasourceDatasets(locals.token, params.id, datasetIds);
+
+			if (!result.ok) {
+				return fail(result.status || 400, {
+					error: result.error,
+					action: "importDatasets"
+				});
+			}
+
+			return {
+				success: true,
+				message: `Successfully imported ${result.data.length} dataset(s)!`,
+				importedDatasets: result.data,
+				action: "importDatasets"
+			};
+		} catch (err: any) {
+			return fail(500, {
+				error: err.message || "Failed to import datasets",
+				action: "importDatasets"
 			});
 		}
 	}
