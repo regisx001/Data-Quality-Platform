@@ -170,6 +170,14 @@ export const actions: Actions = {
 				});
 			}
 
+			if (!result.data.success) {
+				return fail(400, {
+					error: result.data.message,
+					connectionTest: result.data,
+					action: "testConnection"
+				});
+			}
+
 			return {
 				success: true,
 				message: result.data.message,

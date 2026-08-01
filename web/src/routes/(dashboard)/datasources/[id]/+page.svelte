@@ -9,6 +9,9 @@
 	import Play from "@lucide/svelte/icons/play";
 	import Settings2 from "@lucide/svelte/icons/settings-2";
 	import Activity from "@lucide/svelte/icons/activity";
+	import Database from "@lucide/svelte/icons/database";
+	import User from "@lucide/svelte/icons/user";
+	import Calendar from "@lucide/svelte/icons/calendar";
 	import type { PageData, ActionData } from "./$types";
 	import type {
 		DatasourceStatus,
@@ -143,19 +146,19 @@
 <div class="p-6 sm:p-8 w-full space-y-6">
 	<!-- Navigation & Actions Bar -->
 	<div
-		class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5"
+		class="flex flex-col gap-4 border-b border-border pb-5"
 	>
-		<div class="space-y-1">
+		<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 			<div class="flex items-center gap-3">
 				<a
 					href="/datasources"
-					class="p-2 rounded-lg border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+					class="p-2 rounded-lg border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground shrink-0"
 					title="Back to Datasources"
 				>
 					<ArrowLeft class="size-4" />
 				</a>
-				<div>
-					<div class="flex items-center gap-2.5">
+				<div class="space-y-1">
+					<div class="flex items-center gap-2.5 flex-wrap">
 						<h1 class="text-2xl font-bold tracking-tight">
 							{datasource.name}
 						</h1>
@@ -165,28 +168,67 @@
 							{statusInfo.label}
 						</span>
 					</div>
+					{#if datasource.description}
+						<p class="text-xs text-muted-foreground line-clamp-2">
+							{datasource.description}
+						</p>
+					{/if}
 				</div>
+			</div>
+
+			<div class="flex items-center gap-2 shrink-0">
+				<Button
+					variant="outline"
+					onclick={() => (isEditOpen = true)}
+					class="h-9 px-3 rounded-lg text-xs font-medium cursor-pointer"
+				>
+					<Edit class="size-3.5 me-1.5" />
+					<span>Edit Parameters</span>
+				</Button>
+
+				<Button
+					variant="destructive"
+					onclick={() => (isDeleteOpen = true)}
+					class="h-9 px-3 rounded-lg text-xs font-medium cursor-pointer"
+				>
+					<Trash2 class="size-3.5 me-1.5" />
+					<span>Delete</span>
+				</Button>
 			</div>
 		</div>
 
-		<div class="flex items-center gap-2">
-			<Button
-				variant="outline"
-				onclick={() => (isEditOpen = true)}
-				class="h-9 px-3 rounded-lg text-xs font-medium cursor-pointer"
-			>
-				<Edit class="size-3.5 me-1.5" />
-				<span>Edit Parameters</span>
-			</Button>
+		<!-- Datasource Key Specifications Metadata Bar -->
+		<div class="flex items-center gap-4 text-xs text-muted-foreground flex-wrap pt-2 border-t border-border/40">
+			<div class="flex items-center gap-1.5">
+				<Database class="size-3.5 text-foreground/70" />
+				<span>Engine:</span>
+				<span class="font-mono font-semibold text-foreground px-2 py-0.5 rounded bg-muted border border-border text-[11px]">
+					{datasource.type}
+				</span>
+			</div>
 
-			<Button
-				variant="destructive"
-				onclick={() => (isDeleteOpen = true)}
-				class="h-9 px-3 rounded-lg text-xs font-medium cursor-pointer"
-			>
-				<Trash2 class="size-3.5 me-1.5" />
-				<span>Delete</span>
-			</Button>
+			<span class="text-border/60">•</span>
+
+			<div class="flex items-center gap-1.5">
+				<User class="size-3.5 text-foreground/70" />
+				<span>Owner:</span>
+				<span class="font-medium text-foreground">@{datasource.owner}</span>
+			</div>
+
+			{#if datasource.registrationDate}
+				<span class="text-border/60">•</span>
+				<div class="flex items-center gap-1.5">
+					<Calendar class="size-3.5 text-foreground/70" />
+					<span>Registered:</span>
+					<span class="font-mono text-foreground">
+						{new Date(datasource.registrationDate).toLocaleDateString(undefined, {
+							year: "numeric",
+							month: "short",
+							day: "numeric"
+						})}
+					</span>
+				</div>
+			{/if}
 		</div>
 	</div>
 
