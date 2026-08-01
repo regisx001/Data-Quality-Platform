@@ -139,7 +139,15 @@
 							<tbody class="divide-y divide-border/60">
 								{#each datasource.datasets as dataset}
 									<tr class="hover:bg-accent/30 transition-colors">
-										<td class="py-3 px-4 font-medium text-foreground">{dataset.name}</td>
+										<td class="py-3 px-4 font-medium text-foreground">
+											<a
+												href={`/datasets/${dataset.id}`}
+												class="hover:underline font-semibold text-primary inline-flex items-center gap-1.5"
+											>
+												<TableProperties class="size-3.5 text-primary/70" />
+												<span>{dataset.name}</span>
+											</a>
+										</td>
 										<td class="py-3 px-4 text-muted-foreground">{dataset.description || "—"}</td>
 										<td class="py-3 px-4 font-mono"
 											>{dataset.rowCount ? dataset.rowCount.toLocaleString() : "Read-only"}</td

@@ -171,52 +171,42 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
     @Override
     public DatasetMetadata getMetadata(String datasetId) {
         String[] parts = datasetId.split("\\.", 2);
-        String schema = parts.length > 1 ? parts[0] : config.schema();
+        String schema = (parts.length > 1 && !parts[0].isBlank()) ? parts[0] : (config.schema() != null && !config.schema().isBlank() ? config.schema() : "public");
         String tableName = parts.length > 1 ? parts[1] : datasetId;
 
         List<ColumnMetadata> columns = new ArrayList<>();
         long estimatedRows = -1;
 
-        try {
-            // Column metadata via Spark
-            String colSql = "SELECT column_name, data_type, "
-                    + "is_nullable "
-                    + "FROM information_schema.columns "
-                    + "WHERE table_schema = '%s' AND table_name = '%s' "
-                            .formatted(escapeLiteral(schema), escapeLiteral(tableName))
-                    + "ORDER BY ordinal_position";
+        String colSql = """
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = ? AND table_name = ?
+            ORDER BY ordinal_position
+            """;
 
-            log.info("Retrieving column metadata via Spark JDBC query");
-            Dataset<Row> colDf = sparkQuery(colSql);
+        log.info("Retrieving column metadata for '{}.{}' via plain JDBC", schema, tableName);
 
-            for (Row row : colDf.collectAsList()) {
-                String colName = row.getString(0);
-                String pgDataType = row.getString(1);
-                String nullableStr = row.getString(2);
+        try (Connection conn = openConnection();
+             PreparedStatement stmt = conn.prepareStatement(colSql)) {
 
-                columns.add(new ColumnMetadata(
-                        colName,
-                        mapPgDataType(pgDataType),
-                        "YES".equalsIgnoreCase(nullableStr)));
-            }
+            stmt.setString(1, schema);
+            stmt.setString(2, tableName);
 
-            // Row count estimate via Spark
-            String countSql = "SELECT reltuples::bigint AS estimate "
-                    + "FROM pg_class WHERE relnamespace = "
-                    + "(SELECT oid FROM pg_namespace WHERE nspname = '%s') "
-                            .formatted(escapeLiteral(schema))
-                    + "AND relname = '%s'".formatted(escapeLiteral(tableName));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String colName = rs.getString("column_name");
+                    String pgDataType = rs.getString("data_type");
+                    String nullableStr = rs.getString("is_nullable");
 
-            log.info("Retrieving row count estimate via Spark JDBC query");
-            Dataset<Row> countDf = sparkQuery(countSql);
-            Row countRow = countDf.head();
-            if (countRow != null && !countRow.isNullAt(0)) {
-                estimatedRows = countRow.getLong(0);
+                    columns.add(new ColumnMetadata(
+                            colName,
+                            mapPgDataType(pgDataType),
+                            "YES".equalsIgnoreCase(nullableStr)));
+                }
             }
 
         } catch (Exception e) {
-            log.error("Failed to retrieve metadata for '{}': {}",
-                    datasetId, e.getMessage(), e);
+            log.error("Failed to retrieve metadata for '{}': {}", datasetId, e.getMessage(), e);
         }
 
         return new DatasetMetadata(tableName, columns, estimatedRows);

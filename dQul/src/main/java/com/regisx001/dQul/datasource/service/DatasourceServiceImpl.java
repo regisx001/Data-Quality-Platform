@@ -253,19 +253,24 @@ public class DatasourceServiceImpl implements DatasourceService {
             Long rowCount = descriptor != null ? descriptor.rowCount() : null;
 
             Dataset dataset = datasetRepository.findByDatasourceIdAndName(id, trimmedName)
-                    .orElseGet(() -> Dataset.builder()
-                            .name(trimmedName)
-                            .type(datasource.getType())
-                            .status(DatasetStatus.ACTIVE)
-                            .datasource(datasource)
-                            .lastDiscovered(LocalDateTime.now())
-                            .build());
+                    .orElseGet(() -> {
+                        Dataset d = Dataset.builder()
+                                .name(trimmedName)
+                                .type(datasource.getType())
+                                .status(DatasetStatus.ACTIVE)
+                                .datasource(datasource)
+                                .lastDiscovered(LocalDateTime.now())
+                                .build();
+                        datasource.getDatasets().add(d);
+                        return d;
+                    });
 
             dataset.setLastDiscovered(LocalDateTime.now());
             if (rowCount != null) {
                 dataset.setRowCount(rowCount);
             }
-            imported.add(datasetRepository.save(dataset));
+            Dataset saved = datasetRepository.save(dataset);
+            imported.add(saved);
         }
 
         return imported;

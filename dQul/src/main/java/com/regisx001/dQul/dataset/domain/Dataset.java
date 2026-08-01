@@ -51,7 +51,8 @@ public class Dataset {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private DatasetStatus status;
+    @Builder.Default
+    private DatasetStatus status = DatasetStatus.ACTIVE;
 
     private LocalDateTime lastDiscovered;
 
@@ -69,6 +70,11 @@ public class Dataset {
     @JoinColumn(name = "datasource_id", nullable = false)
     @JsonIgnoreProperties("datasets")
     private Datasource datasource;
+
+    @OneToMany(mappedBy = "dataset", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    @JsonIgnoreProperties("dataset")
+    private List<DatasetColumn> columns = new ArrayList<>();
 
     @OneToMany(mappedBy = "dataset", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
