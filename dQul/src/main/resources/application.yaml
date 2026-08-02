@@ -33,10 +33,10 @@ security:
     expiration-time: ${JWT_EXPIRATION_TIME}
 
 minio:
-  endpoint: ${MINIO_ENDPOINT}
-  access-key: minioadmin
-  secret-key: minioadmin123
-  bucket: files
+  endpoint: ${MINIO_ENDPOINT:http://localhost:21001}
+  access-key: ${MINIO_ROOT_USER:minioadmin}
+  secret-key: ${MINIO_ROOT_PASSWORD:minioadmin123}
+  bucket: ${MINIO_BUCKET:csv-uploads}
 
 # Apache Spark Compute Engine Configuration
 spark:

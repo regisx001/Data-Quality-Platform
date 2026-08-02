@@ -47,10 +47,17 @@ public class DatasourceServiceImpl implements DatasourceService {
     @Override
     public Datasource createDatasource(String name, String type, String description,
             String owner) {
+        return createDatasource(name, type, description, owner, null);
+    }
+
+    @Override
+    public Datasource createDatasource(String name, String type, String description,
+            String owner, String configJson) {
         if (datasourceRepository.existsByName(name)) {
             throw new IllegalArgumentException(
                     "Datasource with name '" + name + "' already exists");
         }
+        validateSupportedType(type);
 
         Datasource datasource = Datasource.builder()
                 .name(name)
@@ -58,10 +65,31 @@ public class DatasourceServiceImpl implements DatasourceService {
                 .description(description)
                 .status(DatasourceStatus.REGISTERED)
                 .owner(owner)
+                .configJson(configJson)
                 .registrationDate(LocalDateTime.now())
                 .build();
 
-        return datasourceRepository.save(datasource);
+        Datasource saved = datasourceRepository.save(datasource);
+
+        if (configJson != null && !configJson.isBlank()) {
+            try {
+                ConnectionTestResult testResult = testConnection(saved.getId());
+                if (testResult.success()) {
+                    saved.setStatus(DatasourceStatus.ACTIVE);
+                    saved = datasourceRepository.save(saved);
+
+                    List<DatasetDescriptor> descriptors = discoverDatasets(saved.getId());
+                    if (descriptors != null && !descriptors.isEmpty()) {
+                        List<String> ids = descriptors.stream().map(DatasetDescriptor::id).toList();
+                        importDatasets(saved.getId(), ids);
+                    }
+                }
+            } catch (Exception e) {
+                // If auto-connection test or discovery fails, keep status REGISTERED
+            }
+        }
+
+        return saved;
     }
 
     @Override
@@ -99,6 +127,7 @@ public class DatasourceServiceImpl implements DatasourceService {
             datasource.setName(name);
         }
         if (type != null) {
+            validateSupportedType(type);
             datasource.setType(type);
         }
         if (description != null) {
@@ -109,6 +138,13 @@ public class DatasourceServiceImpl implements DatasourceService {
         }
 
         return datasourceRepository.save(datasource);
+    }
+
+    private void validateSupportedType(String type) {
+        if (type == null || (!type.equalsIgnoreCase("POSTGRESQL") && !type.equalsIgnoreCase("CSV"))) {
+            throw new IllegalArgumentException(
+                    "Unsupported datasource type: " + type + ". Supported connectors are PostgreSQL and CSV.");
+        }
     }
 
     @Override

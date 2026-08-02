@@ -49,7 +49,8 @@ export async function getDatasetById(
     try {
         const res = await apiFetchAuthRaw(`/api/v1/datasets/${id}`, token);
         if (!res.ok) return null;
-        return await res.json();
+        const text = await res.text();
+        return (text && text.trim()) ? JSON.parse(text) : null;
     } catch {
         return null;
     }
@@ -67,7 +68,8 @@ export async function getDatasetPreview(
     try {
         const res = await apiFetchAuthRaw(`/api/v1/datasets/${id}/preview?limit=${limit}`, token);
         if (!res.ok) return null;
-        return await res.json();
+        const text = await res.text();
+        return (text && text.trim()) ? JSON.parse(text) : null;
     } catch {
         return null;
     }
@@ -85,12 +87,19 @@ export async function profileDataset(
         const res = await apiFetchAuthRaw(`/api/v1/datasets/${id}/profile`, token, {
             method: "POST",
         });
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            return { ok: false, error: body.message || "Failed to profile dataset" };
+        const text = await res.text();
+        let body: any = {};
+        if (text && text.trim()) {
+            try {
+                body = JSON.parse(text);
+            } catch {
+                body = {};
+            }
         }
-        const data = await res.json();
-        return { ok: true, data };
+        if (!res.ok) {
+            return { ok: false, error: body.message || `Request failed with status ${res.status}` };
+        }
+        return { ok: true, data: body };
     } catch (err: any) {
         return { ok: false, error: err.message || "Network error profiling dataset" };
     }

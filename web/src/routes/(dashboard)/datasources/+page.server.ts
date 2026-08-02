@@ -6,6 +6,7 @@ import {
 	updateDatasource,
 	deleteDatasource,
 	changeDatasourceStatus,
+	uploadCsvFile,
 	type DatasourceStatus
 } from "$lib/server/api";
 
@@ -48,11 +49,52 @@ export const actions: Actions = {
 			});
 		}
 
+		let configJson: string | undefined = undefined;
+
+		if (type.toUpperCase() === "CSV") {
+			let filePath = data.get("filePath")?.toString().trim() || "";
+			const csvSourceMode = data.get("csvSourceMode")?.toString() || "upload";
+
+			if (csvSourceMode === "upload") {
+				const csvFile = data.get("csvFile") as File | null;
+				if (csvFile && csvFile.size > 0 && csvFile.name) {
+					const uploadData = new FormData();
+					uploadData.append("file", csvFile);
+					const uploadRes = await uploadCsvFile(locals.token, uploadData);
+					if (!uploadRes.ok) {
+						return fail(uploadRes.status || 400, {
+							error: uploadRes.error || "Failed to upload CSV file to MinIO",
+							action: "create"
+						});
+					}
+					filePath = uploadRes.data.filePath;
+				}
+			}
+
+			const delimiter = data.get("delimiter")?.toString() || ",";
+			const header = data.get("header")?.toString() !== "false";
+			const encoding = data.get("encoding")?.toString() || "UTF-8";
+			const quoteChar = data.get("quoteChar")?.toString() || "\"";
+			const escapeChar = data.get("escapeChar")?.toString() || "\\";
+			const inferSchema = data.get("inferSchema")?.toString() !== "false";
+
+			configJson = JSON.stringify({
+				filePath,
+				delimiter,
+				header,
+				encoding,
+				quoteChar,
+				escapeChar,
+				inferSchema
+			});
+		}
+
 		const result = await createDatasource(locals.token, {
 			name,
 			type,
 			description,
-			owner
+			owner,
+			configJson
 		});
 
 		if (!result.ok) {

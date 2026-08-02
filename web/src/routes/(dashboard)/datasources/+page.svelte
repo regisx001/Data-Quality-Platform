@@ -127,14 +127,11 @@
 					class="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
 				>
 					<option value="PostgreSQL">PostgreSQL</option>
-					<option value="MySQL">MySQL</option>
 					<option value="CSV">CSV / File Stream</option>
-					<option value="ClickHouse">ClickHouse</option>
-					<option value="Snowflake">Snowflake</option>
-					<option value="Oracle">Oracle</option>
-					<option value="MongoDB">MongoDB</option>
 				</select>
 			</Field.Field>
+
+
 
 			<Field.Field>
 				<Field.Label for="create-owner">Owner Username</Field.Label>

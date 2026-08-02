@@ -16,6 +16,9 @@ public interface DatasourceService {
         Datasource createDatasource(String name, String type, String description,
                         String owner);
 
+        Datasource createDatasource(String name, String type, String description,
+                        String owner, String configJson);
+
         Datasource getDatasourceById(UUID id);
 
         Datasource getDatasourceByName(String name);

@@ -190,26 +190,80 @@
 		<Tabs.Content value="schema" class="mt-4 space-y-4">
 			<Card.Root class="rounded-xl border-border bg-card overflow-hidden shadow-xs">
 				<Card.Header class="pb-3 border-b border-border">
-					<div class="flex items-center justify-between">
+					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 						<div>
-							<Card.Title class="text-base font-bold tracking-tight flex items-center gap-2">
-								<TableProperties class="size-4 text-primary" />
-								<span>Column Schema & Profiling</span>
-							</Card.Title>
+							<Card.Title class="text-base font-bold tracking-tight">Column Schema & Statistical Profiles</Card.Title>
 							<Card.Description class="text-xs text-muted-foreground mt-0.5">
 								Structural definitions, nullability, distinct value counts, and min/max/mean statistics.
 							</Card.Description>
 						</div>
-						<span class="text-xs text-muted-foreground font-mono">
-							{dataset.columns?.length ?? 0} Total Columns
-						</span>
+						<div class="flex items-center gap-3">
+							<span class="text-xs text-muted-foreground font-mono">
+								{dataset.columns?.length ?? 0} Total Columns
+							</span>
+							<form
+								action="?/profile"
+								method="POST"
+								use:enhance={() => {
+									isProfiling = true;
+									return async ({ update }) => {
+										isProfiling = false;
+										await update();
+									};
+								}}
+							>
+								<Button
+									type="submit"
+									variant="outline"
+									size="sm"
+									disabled={isProfiling}
+									class="h-8 text-xs font-medium cursor-pointer gap-1.5"
+								>
+									{#if isProfiling}
+										<Loader2 class="size-3.5 animate-spin" />
+										<span>Profiling...</span>
+									{:else}
+										<Sparkles class="size-3.5 text-primary" />
+										<span>Run Profiler</span>
+									{/if}
+								</Button>
+							</form>
+						</div>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-0">
 					{#if !dataset.columns || dataset.columns.length === 0}
-						<div class="p-8 text-center text-xs text-muted-foreground space-y-2">
-							<p class="font-medium">No column schema extracted yet.</p>
-							<p>Click "Run Profiler" above to inspect and extract column metadata from this table.</p>
+						<div class="p-8 text-center text-xs text-muted-foreground space-y-3">
+							<p class="font-medium text-foreground">No column schema extracted yet.</p>
+							<p class="max-w-md mx-auto">Click "Run Profiler" to inspect, extract column metadata, and calculate null statistics for this table.</p>
+							<form
+								action="?/profile"
+								method="POST"
+								use:enhance={() => {
+									isProfiling = true;
+									return async ({ update }) => {
+										isProfiling = false;
+										await update();
+									};
+								}}
+								class="pt-1"
+							>
+								<Button
+									type="submit"
+									variant="default"
+									size="sm"
+									disabled={isProfiling}
+									class="h-8 text-xs font-medium cursor-pointer gap-1.5"
+								>
+									{#if isProfiling}
+										<Loader2 class="size-3.5 animate-spin" />
+										<span>Profiling...</span>
+									{:else}
+										<Sparkles class="size-3.5" />
+										<span>Run Profiler</span>
+									{/if}
+								</Button>
+							</form>
 						</div>
 					{:else}
 						<div class="overflow-x-auto w-full">

@@ -11,6 +11,7 @@ import {
 	testDatasourceConnection,
 	discoverDatasourceDatasets,
 	importDatasourceDatasets,
+	uploadCsvFile,
 	type DatasourceStatus
 } from "$lib/server/api";
 
@@ -153,6 +154,87 @@ export const actions: Actions = {
 			message: "Datasource configuration saved successfully!",
 			configJson
 		};
+	},
+
+	uploadCsvDataset: async ({ request, locals, params }) => {
+		if (!locals.user || !locals.token) {
+			throw redirect(303, "/login");
+		}
+
+		try {
+			const data = await request.formData();
+			const csvFile = data.get("csvFile") as File | null;
+			let filePath = data.get("filePath")?.toString().trim() || "";
+			const csvSourceMode = data.get("csvSourceMode")?.toString() || "upload";
+
+			if (csvSourceMode === "upload") {
+				if (csvFile && csvFile.size > 0 && csvFile.name) {
+					const uploadData = new FormData();
+					uploadData.append("file", csvFile);
+					const uploadRes = await uploadCsvFile(locals.token, uploadData);
+					if (!uploadRes.ok) {
+						return fail(uploadRes.status || 400, {
+							error: uploadRes.error || "Failed to upload CSV file to MinIO",
+							action: "uploadCsvDataset"
+						});
+					}
+					filePath = uploadRes.data.filePath;
+				}
+			}
+
+			if (!filePath) {
+				return fail(400, {
+					error: "A valid CSV file or file path is required",
+					action: "uploadCsvDataset"
+				});
+			}
+
+			const delimiter = data.get("delimiter")?.toString() || ",";
+			const header = data.get("header")?.toString() !== "false";
+			const encoding = data.get("encoding")?.toString() || "UTF-8";
+			const quoteChar = data.get("quoteChar")?.toString() || "\"";
+			const escapeChar = data.get("escapeChar")?.toString() || "\\";
+			const inferSchema = data.get("inferSchema")?.toString() !== "false";
+
+			const configJson = JSON.stringify({
+				filePath,
+				delimiter,
+				header,
+				encoding,
+				quoteChar,
+				escapeChar,
+				inferSchema
+			});
+
+			const saveRes = await saveDatasourceConfig(locals.token, params.id, configJson);
+			if (!saveRes.ok) {
+				return fail(saveRes.status || 400, {
+					error: saveRes.error,
+					action: "uploadCsvDataset"
+				});
+			}
+
+			const discoverRes = await discoverDatasourceDatasets(locals.token, params.id);
+			if (discoverRes.ok && discoverRes.data.length > 0) {
+				const datasetIds = discoverRes.data.map(d => d.id);
+				await importDatasourceDatasets(locals.token, params.id, datasetIds);
+			}
+
+			const updatedDatasource = await getDatasourceById(locals.token, params.id);
+
+			return {
+				success: true,
+				message: "CSV dataset uploaded & registered successfully!",
+				datasource: updatedDatasource || saveRes.data,
+				configJson,
+				action: "uploadCsvDataset"
+			};
+		} catch (err: any) {
+			return fail(500, {
+				error: err.message || "Failed to upload and register CSV dataset",
+				action: "uploadCsvDataset"
+			});
+		}
 	},
 
 	testConnection: async ({ locals, params }) => {

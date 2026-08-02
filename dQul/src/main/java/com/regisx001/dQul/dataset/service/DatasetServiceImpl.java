@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,7 +16,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 
-import org.apache.spark.sql.Row;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +41,8 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 @Transactional
 public class DatasetServiceImpl implements DatasetService {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DatasetServiceImpl.class);
 
     private final DatasetRepository datasetRepository;
     private final DatasetColumnRepository columnRepository;
@@ -82,7 +84,8 @@ public class DatasetServiceImpl implements DatasetService {
 
         if (datasource.getConfigJson() != null && !datasource.getConfigJson().isBlank()) {
             try {
-                ConnectorConfig config = parseConfig(datasource.getType(), datasource.getConfigJson(), datasource.getName());
+                ConnectorConfig config = parseConfig(datasource.getType(), datasource.getConfigJson(),
+                        datasource.getName());
                 if (config instanceof ConnectorConfig.Postgres pgConfig) {
                     return fetchPostgresPreview(pgConfig, dataset.getName(), safeLimit);
                 } else if (config instanceof ConnectorConfig.Csv csvConfig) {
@@ -105,9 +108,11 @@ public class DatasetServiceImpl implements DatasetService {
             for (String col : colNames) {
                 if (col.toLowerCase().contains("id")) {
                     mockRow.put(col, r);
-                } else if (col.toLowerCase().contains("date") || col.toLowerCase().contains("time") || col.toLowerCase().contains("at")) {
+                } else if (col.toLowerCase().contains("date") || col.toLowerCase().contains("time")
+                        || col.toLowerCase().contains("at")) {
                     mockRow.put(col, LocalDateTime.now().minusDays(r).toString());
-                } else if (col.toLowerCase().contains("price") || col.toLowerCase().contains("amount") || col.toLowerCase().contains("count")) {
+                } else if (col.toLowerCase().contains("price") || col.toLowerCase().contains("amount")
+                        || col.toLowerCase().contains("count")) {
                     mockRow.put(col, Math.round(r * 15.5 * 100.0) / 100.0);
                 } else {
                     mockRow.put(col, "Sample " + col + " #" + r);
@@ -123,9 +128,11 @@ public class DatasetServiceImpl implements DatasetService {
                 .build();
     }
 
-    private DataPreviewResult fetchPostgresPreview(ConnectorConfig.Postgres config, String datasetName, int limit) throws Exception {
+    private DataPreviewResult fetchPostgresPreview(ConnectorConfig.Postgres config, String datasetName, int limit)
+            throws Exception {
         String[] parts = datasetName.split("\\.", 2);
-        String schema = (parts.length > 1 && !parts[0].isBlank()) ? parts[0] : (config.schema() != null && !config.schema().isBlank() ? config.schema() : "public");
+        String schema = (parts.length > 1 && !parts[0].isBlank()) ? parts[0]
+                : (config.schema() != null && !config.schema().isBlank() ? config.schema() : "public");
         String tableName = parts.length > 1 ? parts[1] : datasetName;
 
         Properties props = new Properties();
@@ -143,7 +150,7 @@ public class DatasetServiceImpl implements DatasetService {
         List<Map<String, Object>> rows = new ArrayList<>();
 
         try (Connection conn = DriverManager.getConnection(url, props);
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, limit);
 
@@ -179,7 +186,8 @@ public class DatasetServiceImpl implements DatasetService {
         List<Map<String, Object>> rows = new ArrayList<>();
 
         if (java.nio.file.Files.exists(path)) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(java.nio.file.Files.newInputStream(path), java.nio.charset.Charset.forName(config.encoding())))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    java.nio.file.Files.newInputStream(path), java.nio.charset.Charset.forName(config.encoding())))) {
                 String headerLine = reader.readLine();
                 if (headerLine != null) {
                     String[] headers = headerLine.split(String.valueOf(config.delimiter()));
@@ -211,11 +219,23 @@ public class DatasetServiceImpl implements DatasetService {
                 .build();
     }
 
+    public static boolean isNullValue(Object val) {
+        if (val == null) {
+            return true;
+        }
+        String s = val.toString().trim();
+        return s.isEmpty() || s.equalsIgnoreCase("null") || s.equalsIgnoreCase("none") || s.equalsIgnoreCase("n/a");
+    }
+
     @Override
     @Transactional
     public DatasetDetailResponse profileDataset(UUID id) {
         Dataset dataset = resolveDataset(id);
+        profileDatasetInternal(dataset);
+        return mapToDetailResponse(dataset);
+    }
 
+    private void profileDatasetInternal(Dataset dataset) {
         if (dataset.getColumns() == null || dataset.getColumns().isEmpty()) {
             syncColumnsFromConnector(dataset);
         }
@@ -223,15 +243,216 @@ public class DatasetServiceImpl implements DatasetService {
         LocalDateTime now = LocalDateTime.now();
         dataset.setLastValidated(now);
 
+        Datasource datasource = dataset.getDatasource();
+        boolean profiledReal = false;
+
+        if (datasource != null && datasource.getConfigJson() != null && !datasource.getConfigJson().isBlank()) {
+            try {
+                ConnectorConfig config = parseConfig(datasource.getType(), datasource.getConfigJson(),
+                        datasource.getName());
+                if (config instanceof ConnectorConfig.Postgres pgConfig) {
+                    profilePostgresDataset(dataset, pgConfig, now);
+                    profiledReal = true;
+                } else if (config instanceof ConnectorConfig.Csv csvConfig) {
+                    profileCsvDataset(dataset, csvConfig, now);
+                    profiledReal = true;
+                }
+            } catch (Exception e) {
+                log.warn("Real database profiling failed for dataset '{}', falling back to default profiling: {}",
+                        dataset.getName(), e.getMessage());
+            }
+        }
+
+        if (!profiledReal) {
+            profileFallbackDataset(dataset, now);
+        }
+
+        datasetRepository.save(dataset);
+    }
+
+    private void profilePostgresDataset(Dataset dataset, ConnectorConfig.Postgres config, LocalDateTime now)
+            throws Exception {
+        String[] parts = dataset.getName().split("\\.", 2);
+        String schema = (parts.length > 1 && !parts[0].isBlank()) ? parts[0]
+                : (config.schema() != null && !config.schema().isBlank() ? config.schema() : "public");
+        String tableName = parts.length > 1 ? parts[1] : dataset.getName();
+
+        Properties props = new Properties();
+        props.setProperty("user", config.username());
+        props.setProperty("password", config.password());
+        if (config.ssl()) {
+            props.setProperty("ssl", "true");
+            props.setProperty("sslmode", "require");
+        }
+        String url = config.jdbcUrl();
+
+        try (Connection conn = DriverManager.getConnection(url, props)) {
+            long totalRows = 0L;
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt
+                            .executeQuery("SELECT COUNT(*) FROM \"%s\".\"%s\"".formatted(schema, tableName))) {
+                if (rs.next()) {
+                    totalRows = rs.getLong(1);
+                }
+            }
+            if (totalRows <= 0)
+                totalRows = 1L;
+            dataset.setRowCount(totalRows);
+
+            for (DatasetColumn col : dataset.getColumns()) {
+                String colName = col.getName();
+                boolean isNumeric = col.getDataType() != null && (col.getDataType().toUpperCase().contains("INT") ||
+                        col.getDataType().toUpperCase().contains("NUM") ||
+                        col.getDataType().toUpperCase().contains("FLOAT") ||
+                        col.getDataType().toUpperCase().contains("DOUBLE") ||
+                        col.getDataType().toUpperCase().contains("DECIMAL") ||
+                        col.getDataType().toUpperCase().contains("REAL") ||
+                        col.getDataType().toUpperCase().contains("SERIAL"));
+
+                String avgSql = isNumeric
+                        ? "AVG(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END) AS avg_val"
+                        : "NULL::numeric AS avg_val";
+
+                String colSql = """
+                        SELECT
+                            COUNT(CASE WHEN "%1$s" IS NULL OR LOWER(TRIM("%1$s"::text)) = 'null' OR TRIM("%1$s"::text) = '' OR LOWER(TRIM("%1$s"::text)) = 'none' OR LOWER(TRIM("%1$s"::text)) = 'n/a' THEN 1 END) AS null_count,
+                            COUNT(DISTINCT CASE WHEN "%1$s" IS NOT NULL AND LOWER(TRIM("%1$s"::text)) <> 'null' AND TRIM("%1$s"::text) <> '' AND LOWER(TRIM("%1$s"::text)) <> 'none' AND LOWER(TRIM("%1$s"::text)) <> 'n/a' THEN "%1$s"::text END) AS distinct_count,
+                            MIN(CASE WHEN "%1$s" IS NOT NULL AND LOWER(TRIM("%1$s"::text)) <> 'null' AND TRIM("%1$s"::text) <> '' THEN "%1$s"::text END) AS min_val,
+                            MAX(CASE WHEN "%1$s" IS NOT NULL AND LOWER(TRIM("%1$s"::text)) <> 'null' AND TRIM("%1$s"::text) <> '' THEN "%1$s"::text END) AS max_val,
+                            %2$s
+                        FROM "%3$s"."%4$s"
+                        """
+                        .formatted(colName, avgSql, schema, tableName);
+
+                long nullCount = 0L;
+                long distinctCount = 0L;
+                String minVal = null;
+                String maxVal = null;
+                Double avgVal = null;
+
+                try (Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery(colSql)) {
+                    if (rs.next()) {
+                        nullCount = rs.getLong("null_count");
+                        distinctCount = rs.getLong("distinct_count");
+                        minVal = rs.getString("min_val");
+                        maxVal = rs.getString("max_val");
+                        Object avgObj = rs.getObject("avg_val");
+                        if (avgObj != null) {
+                            avgVal = ((Number) avgObj).doubleValue();
+                        }
+                    }
+                } catch (Exception colEx) {
+                    log.warn("Failed to profile column '{}' in Postgres, using default column profile: {}", colName,
+                            colEx.getMessage());
+                    nullCount = col.isNullable() ? 1L : 0L;
+                    distinctCount = 1L;
+                }
+
+                double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
+
+                ColumnProfile profile = ColumnProfile.builder()
+                        .column(col)
+                        .nullCount(nullCount)
+                        .nullPercentage(nullPct)
+                        .distinctCount(distinctCount)
+                        .minValue(minVal)
+                        .maxValue(maxVal)
+                        .avgValue(avgVal)
+                        .profiledAt(now)
+                        .build();
+
+                profileRepository.save(profile);
+            }
+        }
+    }
+
+    private void profileCsvDataset(Dataset dataset, ConnectorConfig.Csv config, LocalDateTime now) throws Exception {
+        java.nio.file.Path path = java.nio.file.Paths.get(config.filePath()).toAbsolutePath().normalize();
+        if (!java.nio.file.Files.exists(path)) {
+            profileFallbackDataset(dataset, now);
+            return;
+        }
+
+        List<String> headers = new ArrayList<>();
+        List<String[]> dataRows = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(java.nio.file.Files.newInputStream(path),
+                java.nio.charset.Charset.forName(config.encoding())))) {
+            String headerLine = reader.readLine();
+            if (headerLine != null) {
+                for (String h : headerLine.split(String.valueOf(config.delimiter()))) {
+                    headers.add(h.trim().replace("\"", ""));
+                }
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    dataRows.add(line.split(String.valueOf(config.delimiter())));
+                }
+            }
+        }
+
+        long totalRows = Math.max(1L, dataRows.size());
+        dataset.setRowCount(totalRows);
+
+        for (DatasetColumn col : dataset.getColumns()) {
+            int colIdx = headers.indexOf(col.getName());
+            long nullCount = 0L;
+            java.util.Set<String> distinctSet = new java.util.HashSet<>();
+            String minVal = null;
+            String maxVal = null;
+            double sum = 0;
+            long numCount = 0;
+
+            for (String[] row : dataRows) {
+                String val = (colIdx >= 0 && colIdx < row.length) ? row[colIdx].trim().replace("\"", "") : null;
+                if (isNullValue(val)) {
+                    nullCount++;
+                } else {
+                    distinctSet.add(val);
+                    if (minVal == null || val.compareTo(minVal) < 0)
+                        minVal = val;
+                    if (maxVal == null || val.compareTo(maxVal) > 0)
+                        maxVal = val;
+                    try {
+                        double d = Double.parseDouble(val);
+                        sum += d;
+                        numCount++;
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+
+            double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
+            Double avgVal = numCount > 0 ? (sum / numCount) : null;
+
+            ColumnProfile profile = ColumnProfile.builder()
+                    .column(col)
+                    .nullCount(nullCount)
+                    .nullPercentage(nullPct)
+                    .distinctCount((long) distinctSet.size())
+                    .minValue(minVal)
+                    .maxValue(maxVal)
+                    .avgValue(avgVal)
+                    .profiledAt(now)
+                    .build();
+
+            profileRepository.save(profile);
+        }
+    }
+
+    private void profileFallbackDataset(Dataset dataset, LocalDateTime now) {
         for (DatasetColumn col : dataset.getColumns()) {
             long totalRows = dataset.getRowCount() != null && dataset.getRowCount() > 0 ? dataset.getRowCount() : 100L;
             long nullCount = col.isNullable() ? (long) (Math.random() * (totalRows * 0.05)) : 0L;
             double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
             long distinctCount = Math.max(1L, (long) (totalRows * (0.1 + Math.random() * 0.8)));
 
-            String minVal = col.getDataType().toUpperCase().contains("INT") || col.getDataType().toUpperCase().contains("NUM") ? "1" : "A";
-            String maxVal = col.getDataType().toUpperCase().contains("INT") || col.getDataType().toUpperCase().contains("NUM") ? String.valueOf(totalRows) : "Z";
-            Double avgVal = col.getDataType().toUpperCase().contains("INT") || col.getDataType().toUpperCase().contains("NUM") ? (totalRows / 2.0) : null;
+            String minVal = col.getDataType().toUpperCase().contains("INT")
+                    || col.getDataType().toUpperCase().contains("NUM") ? "1" : "A";
+            String maxVal = col.getDataType().toUpperCase().contains("INT")
+                    || col.getDataType().toUpperCase().contains("NUM") ? String.valueOf(totalRows) : "Z";
+            Double avgVal = col.getDataType().toUpperCase().contains("INT")
+                    || col.getDataType().toUpperCase().contains("NUM") ? (totalRows / 2.0) : null;
 
             ColumnProfile profile = ColumnProfile.builder()
                     .column(col)
@@ -246,9 +467,6 @@ public class DatasetServiceImpl implements DatasetService {
 
             profileRepository.save(profile);
         }
-
-        datasetRepository.save(dataset);
-        return mapToDetailResponse(dataset);
     }
 
     private void syncColumnsFromConnector(Dataset dataset) {
@@ -258,13 +476,15 @@ public class DatasetServiceImpl implements DatasetService {
         }
 
         try {
-            ConnectorConfig config = parseConfig(datasource.getType(), datasource.getConfigJson(), datasource.getName());
+            ConnectorConfig config = parseConfig(datasource.getType(), datasource.getConfigJson(),
+                    datasource.getName());
             DataSourceConnector connector = connectorFactory.createConnector(config);
             DatasetMetadata metadata = connector.getMetadata(dataset.getName());
 
             if (metadata != null && metadata.columns() != null) {
                 for (ColumnMetadata colMeta : metadata.columns()) {
-                    Optional<DatasetColumn> existing = columnRepository.findByDatasetIdAndName(dataset.getId(), colMeta.name());
+                    Optional<DatasetColumn> existing = columnRepository.findByDatasetIdAndName(dataset.getId(),
+                            colMeta.name());
                     if (existing.isEmpty()) {
                         DatasetColumn col = DatasetColumn.builder()
                                 .dataset(dataset)
@@ -312,7 +532,8 @@ public class DatasetServiceImpl implements DatasetService {
                 .name(dataset.getName())
                 .description(dataset.getDescription())
                 .type(dataset.getType())
-                .status(dataset.getStatus() != null ? dataset.getStatus() : com.regisx001.dQul.dataset.domain.DatasetStatus.ACTIVE)
+                .status(dataset.getStatus() != null ? dataset.getStatus()
+                        : com.regisx001.dQul.dataset.domain.DatasetStatus.ACTIVE)
                 .rowCount(dataset.getRowCount())
                 .lastDiscovered(dataset.getLastDiscovered())
                 .lastValidated(dataset.getLastValidated())

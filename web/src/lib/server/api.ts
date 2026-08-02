@@ -28,6 +28,7 @@ export {
 	testDatasourceConnection,
 	discoverDatasourceDatasets,
 	importDatasourceDatasets,
+	uploadCsvFile,
 } from "./api/datasource";
 export type {
 	Datasource,

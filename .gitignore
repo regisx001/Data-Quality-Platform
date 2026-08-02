@@ -23,6 +23,7 @@ SPARKANDCONNECTOR
 hs_err_pid*
 replay_pid*
 
+uploads
 # IDE - Eclipse
 .project
 .classpath

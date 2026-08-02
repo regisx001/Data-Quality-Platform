@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.regisx001.dQul.common.responses.ApiErrorResponse;
 import com.regisx001.dQul.connector.ConnectorConfigSchema;
@@ -24,6 +27,7 @@ import com.regisx001.dQul.dataset.domain.Dataset;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.service.DatasourceService;
+import com.regisx001.dQul.storage.minio.MinioStorageService;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -33,11 +37,36 @@ public class DatasourceController {
 
     private final DatasourceService datasourceService;
     private final ConnectorConfigSchemaService configSchemaService;
+    private final MinioStorageService minioStorageService;
 
     public DatasourceController(DatasourceService datasourceService,
-            ConnectorConfigSchemaService configSchemaService) {
+            ConnectorConfigSchemaService configSchemaService,
+            MinioStorageService minioStorageService) {
         this.datasourceService = datasourceService;
         this.configSchemaService = configSchemaService;
+        this.minioStorageService = minioStorageService;
+    }
+
+    // ── CSV File Upload (MinIO) ───────────────────────────────────────────
+
+    @PostMapping(value = "/upload-csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadCsvFile(@RequestParam("file") MultipartFile file) {
+        try {
+            MinioStorageService.FileUploadResult result = minioStorageService.uploadCsvFile(file);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.BAD_REQUEST.value())
+                            .message(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                            .message("Failed to upload CSV file: " + e.getMessage())
+                            .build());
+        }
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -49,7 +78,8 @@ public class DatasourceController {
                     request.name(),
                     request.type(),
                     request.description(),
-                    request.owner());
+                    request.owner(),
+                    request.configJson());
             return ResponseEntity.status(HttpStatus.CREATED).body(datasource);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -319,7 +349,8 @@ public class DatasourceController {
             String name,
             String type,
             String description,
-            String owner) {
+            String owner,
+            String configJson) {
     }
 
     public record UpdateDatasourceRequest(

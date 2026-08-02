@@ -3,6 +3,8 @@
 	import { Button } from "$lib/components/ui/button/index.js";
 	import * as Card from "$lib/components/ui/card/index.js";
 	import * as Dialog from "$lib/components/ui/dialog/index.js";
+	import * as Field from "$lib/components/ui/field/index.js";
+	import { Input } from "$lib/components/ui/input/index.js";
 	import Play from "@lucide/svelte/icons/play";
 	import Pause from "@lucide/svelte/icons/pause";
 	import Archive from "@lucide/svelte/icons/archive";
@@ -11,6 +13,10 @@
 	import TableProperties from "@lucide/svelte/icons/table-properties";
 	import CheckCircle2 from "@lucide/svelte/icons/check-circle-2";
 	import Activity from "@lucide/svelte/icons/activity";
+	import Upload from "@lucide/svelte/icons/upload";
+	import FileText from "@lucide/svelte/icons/file-text";
+	import Plus from "@lucide/svelte/icons/plus";
+	import { cn } from "$lib/utils";
 	import type { Datasource, DatasetDescriptor } from "$lib/server/api";
 
 	let {
@@ -31,6 +37,23 @@
 	let discoveredDatasets = $state<DatasetDescriptor[]>([]);
 	let selectedDatasetIds = $state<Record<string, boolean>>({});
 	let discoveryError = $state<string | null>(null);
+
+	// CSV Dataset Upload state
+	let isUploadCsvOpen = $state(false);
+	let isUploadingCsv = $state(false);
+	let csvSourceMode = $state<"upload" | "path">("upload");
+	let selectedFile = $state<File | null>(null);
+
+	function handleFileSelected(event: Event) {
+		const target = event.target as HTMLInputElement;
+		if (target.files && target.files.length > 0) {
+			selectedFile = target.files[0];
+		} else {
+			selectedFile = null;
+		}
+	}
+
+	let isCsvDatasource = $derived(datasource.type.toUpperCase() === "CSV");
 
 	function toggleSelectAll(event: Event) {
 		const checked = (event.target as HTMLInputElement).checked;
@@ -91,18 +114,30 @@
 							<span>Associated Datasets</span>
 						</Card.Title>
 						<Card.Description class="text-xs text-muted-foreground mt-0.5">
-							Datasets registered or discovered under this datasource.
+							Datasets registered under this {datasource.type} datasource.
 						</Card.Description>
 					</div>
-					<Button
-						variant="outline"
-						size="sm"
-						onclick={() => (isDiscoverOpen = true)}
-						class="h-8 text-xs gap-1.5 font-medium cursor-pointer shrink-0"
-					>
-						<Search class="size-3.5" />
-						<span>Discover Datasets</span>
-					</Button>
+					{#if isCsvDatasource}
+						<Button
+							variant="default"
+							size="sm"
+							onclick={() => (isUploadCsvOpen = true)}
+							class="h-8 text-xs gap-1.5 font-medium cursor-pointer shrink-0"
+						>
+							<Upload class="size-3.5" />
+							<span>Upload CSV Dataset</span>
+						</Button>
+					{:else}
+						<Button
+							variant="outline"
+							size="sm"
+							onclick={() => (isDiscoverOpen = true)}
+							class="h-8 text-xs gap-1.5 font-medium cursor-pointer shrink-0"
+						>
+							<Search class="size-3.5" />
+							<span>Discover Datasets</span>
+						</Button>
+					{/if}
 				</div>
 			</Card.Header>
 			<Card.Content class="p-0">
@@ -113,17 +148,35 @@
 						</div>
 						<div class="space-y-1">
 							<p class="font-medium text-foreground">No datasets registered yet</p>
-							<p class="max-w-md mx-auto">Scan and register available tables, views, or files from this datasource connection.</p>
+							<p class="max-w-md mx-auto">
+								{#if isCsvDatasource}
+									Upload a CSV dataset file directly to MinIO object storage to parse and register it under this datasource.
+								{:else}
+									Scan and register available tables, views, or files from this datasource connection.
+								{/if}
+							</p>
 						</div>
-						<Button
-							variant="secondary"
-							size="sm"
-							onclick={() => (isDiscoverOpen = true)}
-							class="h-8 text-xs font-medium cursor-pointer mt-1"
-						>
-							<Search class="size-3.5 me-1.5" />
-							<span>Discover & Import Datasets</span>
-						</Button>
+						{#if isCsvDatasource}
+							<Button
+								variant="default"
+								size="sm"
+								onclick={() => (isUploadCsvOpen = true)}
+								class="h-8 text-xs font-medium cursor-pointer mt-1"
+							>
+								<Upload class="size-3.5 me-1.5" />
+								<span>Upload CSV Dataset</span>
+							</Button>
+						{:else}
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={() => (isDiscoverOpen = true)}
+								class="h-8 text-xs font-medium cursor-pointer mt-1"
+							>
+								<Search class="size-3.5 me-1.5" />
+								<span>Discover & Import Datasets</span>
+							</Button>
+						{/if}
 					</div>
 				{:else}
 					<div class="overflow-x-auto w-full">
@@ -494,5 +547,179 @@
 				</form>
 			{/if}
 		</div>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Upload CSV Dataset Modal (MinIO) -->
+<Dialog.Root bind:open={isUploadCsvOpen}>
+	<Dialog.Content class="sm:max-w-lg rounded-xl p-6 border-border bg-card">
+		<Dialog.Header class="space-y-1">
+			<Dialog.Title class="text-lg font-bold tracking-tight flex items-center gap-2">
+				<Upload class="size-5 text-primary" />
+				Upload CSV Dataset (MinIO)
+			</Dialog.Title>
+			<Dialog.Description class="text-xs text-muted-foreground">
+				Upload a CSV file directly to MinIO object storage to parse and register it under '{datasource.name}'.
+			</Dialog.Description>
+		</Dialog.Header>
+
+		<form
+			action="?/uploadCsvDataset"
+			method="POST"
+			enctype="multipart/form-data"
+			use:enhance={() => {
+				isUploadingCsv = true;
+				return async ({ update, result }) => {
+					isUploadingCsv = false;
+					if (result.type === "success") {
+						isUploadCsvOpen = false;
+						selectedFile = null;
+					}
+					await update();
+				};
+			}}
+			class="space-y-4 pt-3 text-xs"
+		>
+			<input type="hidden" name="csvSourceMode" value={csvSourceMode} />
+
+			<!-- Source Mode Switcher -->
+			<div class="grid grid-cols-2 gap-2 p-1 bg-muted rounded-md text-xs">
+				<button
+					type="button"
+					class={cn(
+						"py-1.5 px-3 rounded-sm font-medium transition-all text-center cursor-pointer",
+						csvSourceMode === "upload"
+							? "bg-background text-foreground shadow-xs"
+							: "text-muted-foreground hover:text-foreground"
+					)}
+					onclick={() => (csvSourceMode = "upload")}
+				>
+					Upload CSV File
+				</button>
+				<button
+					type="button"
+					class={cn(
+						"py-1.5 px-3 rounded-sm font-medium transition-all text-center cursor-pointer",
+						csvSourceMode === "path"
+							? "bg-background text-foreground shadow-xs"
+							: "text-muted-foreground hover:text-foreground"
+					)}
+					onclick={() => (csvSourceMode = "path")}
+				>
+					Server File Path
+				</button>
+			</div>
+
+			{#if csvSourceMode === "upload"}
+				<Field.Field>
+					<Field.Label for="overview-csv-file-input">Select CSV File</Field.Label>
+					<div class="relative flex flex-col items-center justify-center p-5 border-2 border-dashed border-border hover:border-primary/50 rounded-lg transition-colors bg-background/50 text-center cursor-pointer">
+						<input
+							id="overview-csv-file-input"
+							name="csvFile"
+							type="file"
+							accept=".csv"
+							onchange={handleFileSelected}
+							disabled={isUploadingCsv}
+							class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+						/>
+						{#if selectedFile}
+							<div class="flex items-center gap-2 text-primary font-medium text-xs">
+								<FileText class="size-5" />
+								<span class="truncate max-w-[220px]">{selectedFile.name}</span>
+								<span class="text-[10px] text-muted-foreground">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+							</div>
+						{:else}
+							<div class="flex flex-col items-center gap-1 text-muted-foreground">
+								<Upload class="size-6 mb-1 text-primary/70" />
+								<span class="text-xs font-medium text-foreground">Click to select CSV dataset</span>
+								<span class="text-[11px]">Streams file into MinIO object storage</span>
+							</div>
+						{/if}
+					</div>
+				</Field.Field>
+			{:else}
+				<Field.Field>
+					<Field.Label for="overview-csv-filepath">CSV File Path (Server)</Field.Label>
+					<Input
+						id="overview-csv-filepath"
+						name="filePath"
+						type="text"
+						placeholder="/path/to/dataset.csv"
+						disabled={isUploadingCsv}
+						class="h-9"
+					/>
+				</Field.Field>
+			{/if}
+
+			<!-- Parsing Options -->
+			<div class="grid grid-cols-2 gap-3 pt-1">
+				<Field.Field class="space-y-1">
+					<Field.Label for="overview-csv-delimiter" class="text-xs">Delimiter</Field.Label>
+					<select
+						id="overview-csv-delimiter"
+						name="delimiter"
+						disabled={isUploadingCsv}
+						class="w-full h-9 px-2.5 rounded-md border border-input bg-background text-foreground text-xs cursor-pointer"
+					>
+						<option value=",">Comma (,)</option>
+						<option value=";">Semicolon (;)</option>
+						<option value="&#9;">Tab (\t)</option>
+						<option value="|">Pipe (|)</option>
+					</select>
+				</Field.Field>
+
+				<Field.Field class="space-y-1">
+					<Field.Label for="overview-csv-encoding" class="text-xs">Encoding</Field.Label>
+					<select
+						id="overview-csv-encoding"
+						name="encoding"
+						disabled={isUploadingCsv}
+						class="w-full h-9 px-2.5 rounded-md border border-input bg-background text-foreground text-xs cursor-pointer"
+					>
+						<option value="UTF-8">UTF-8</option>
+						<option value="ISO-8859-1">ISO-8859-1</option>
+						<option value="US-ASCII">US-ASCII</option>
+						<option value="Windows-1252">Windows-1252</option>
+					</select>
+				</Field.Field>
+			</div>
+
+			<div class="flex items-center gap-4 text-xs pt-1">
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input type="checkbox" name="header" value="true" checked disabled={isUploadingCsv} class="rounded border-input text-primary focus:ring-primary size-4" />
+					<span>Header Row</span>
+				</label>
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input type="checkbox" name="inferSchema" value="true" checked disabled={isUploadingCsv} class="rounded border-input text-primary focus:ring-primary size-4" />
+					<span>Infer Schema</span>
+				</label>
+			</div>
+
+			<Dialog.Footer class="pt-3 flex items-center justify-end gap-2">
+				<Button
+					type="button"
+					variant="outline"
+					onclick={() => (isUploadCsvOpen = false)}
+					disabled={isUploadingCsv}
+					class="h-9 rounded-lg text-xs"
+				>
+					Cancel
+				</Button>
+				<Button
+					type="submit"
+					disabled={isUploadingCsv || (csvSourceMode === "upload" && !selectedFile)}
+					class="h-9 rounded-lg font-medium text-xs cursor-pointer"
+				>
+					{#if isUploadingCsv}
+						<Loader2 class="size-3.5 me-1.5 animate-spin" />
+						<span>Uploading to MinIO...</span>
+					{:else}
+						<Upload class="size-3.5 me-1.5" />
+						<span>Upload & Register Dataset</span>
+					{/if}
+				</Button>
+			</Dialog.Footer>
+		</form>
 	</Dialog.Content>
 </Dialog.Root>

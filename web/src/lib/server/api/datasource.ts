@@ -102,12 +102,43 @@ export async function getDatasourceById(
 }
 
 /**
+ * Upload a CSV file to backend / MinIO storage
+ * POST /api/v1/datasources/upload-csv
+ */
+export async function uploadCsvFile(
+    token: string,
+    formData: FormData
+): Promise<ApiResult<{ filePath: string; objectName: string; bucket: string; fileName: string; fileSize: number; storedInMinio: boolean }>> {
+    try {
+        const res = await apiFetchAuthRaw("/api/v1/datasources/upload-csv", token, {
+            method: "POST",
+            body: formData,
+        });
+        const body = await res.json().catch(() => ({ message: "Failed to parse response" }));
+        if (!res.ok) {
+            return {
+                ok: false,
+                status: res.status,
+                error: body.message || `Upload failed with status ${res.status}`,
+            };
+        }
+        return { ok: true, data: body };
+    } catch (err: any) {
+        return {
+            ok: false,
+            status: 500,
+            error: err.message || "Network error during CSV file upload",
+        };
+    }
+}
+
+/**
  * Create a new datasource
  * POST /api/v1/datasources
  */
 export async function createDatasource(
     token: string,
-    data: { name: string; type: string; description?: string; owner: string }
+    data: { name: string; type: string; description?: string; owner: string; configJson?: string }
 ): Promise<ApiResult<Datasource>> {
     return apiFetchAuth("/api/v1/datasources", token, {
         method: "POST",
@@ -220,7 +251,9 @@ export async function getDatasourceConfig(
         if (res.status === 204) return null;
         if (!res.ok) return null;
 
-        const body = await res.json();
+        const text = await res.text();
+        if (!text || !text.trim()) return null;
+        const body = JSON.parse(text);
         return body.configJson || null;
     } catch {
         return null;

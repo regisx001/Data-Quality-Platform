@@ -27,7 +27,15 @@ export async function apiFetch<T>(
             },
         });
 
-        const body = await res.json().catch(() => ({ message: "Failed to parse response" }));
+        const text = await res.text();
+        let body: any = {};
+        if (text && text.trim()) {
+            try {
+                body = JSON.parse(text);
+            } catch {
+                body = { message: text };
+            }
+        }
 
         if (!res.ok) {
             return {
