@@ -12,6 +12,7 @@ import {
 	discoverDatasourceDatasets,
 	importDatasourceDatasets,
 	uploadCsvFile,
+	deleteDatasetEntity,
 	type DatasourceStatus
 } from "$lib/server/api";
 
@@ -336,6 +337,46 @@ export const actions: Actions = {
 			return fail(500, {
 				error: err.message || "Failed to import datasets",
 				action: "importDatasets"
+			});
+		}
+	},
+
+	deleteDataset: async ({ request, locals, params }) => {
+		if (!locals.user || !locals.token) {
+			throw redirect(303, "/login");
+		}
+
+		try {
+			const data = await request.formData();
+			const datasetId = data.get("datasetId")?.toString().trim();
+
+			if (!datasetId) {
+				return fail(400, {
+					error: "Dataset ID is required",
+					action: "deleteDataset"
+				});
+			}
+
+			const delRes = await deleteDatasetEntity(locals.token, datasetId);
+			if (!delRes.ok) {
+				return fail(400, {
+					error: delRes.error || "Failed to remove dataset",
+					action: "deleteDataset"
+				});
+			}
+
+			const updatedDatasource = await getDatasourceById(locals.token, params.id);
+
+			return {
+				success: true,
+				message: "Dataset removed successfully!",
+				datasource: updatedDatasource,
+				action: "deleteDataset"
+			};
+		} catch (err: any) {
+			return fail(500, {
+				error: err.message || "Failed to remove dataset",
+				action: "deleteDataset"
 			});
 		}
 	}

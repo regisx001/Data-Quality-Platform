@@ -1,6 +1,6 @@
 import { error, fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
-import { getDatasetById, getDatasetPreview, profileDataset } from "$lib/server/api/dataset";
+import { getDatasetById, getDatasetPreview, profileDataset, deleteDataset } from "$lib/server/api/dataset";
 
 export const load: PageServerLoad = async ({ locals, params }) => {
     if (!locals.user || !locals.token) {
@@ -38,5 +38,29 @@ export const actions: Actions = {
             message: "Dataset profiling completed successfully!",
             dataset: result.data
         };
+    },
+
+    delete: async ({ locals, params }) => {
+        if (!locals.user || !locals.token) {
+            throw redirect(303, "/login");
+        }
+
+        const dataset = await getDatasetById(locals.token, params.id);
+        const datasourceId = dataset?.datasourceId;
+
+        const result = await deleteDataset(locals.token, params.id);
+
+        if (!result.ok) {
+            return fail(400, {
+                error: result.error || "Failed to delete dataset",
+                action: "delete"
+            });
+        }
+
+        if (datasourceId) {
+            throw redirect(303, `/datasources/${datasourceId}`);
+        } else {
+            throw redirect(303, "/datasources");
+        }
     }
 };

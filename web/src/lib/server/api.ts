@@ -30,6 +30,14 @@ export {
 	importDatasourceDatasets,
 	uploadCsvFile,
 } from "./api/datasource";
+
+export {
+	getDatasetById as getDatasetDetail,
+	getDatasetPreview,
+	profileDataset,
+	deleteDataset as deleteDatasetEntity,
+} from "./api/dataset";
+
 export type {
 	Datasource,
 	DatasourceStatus,

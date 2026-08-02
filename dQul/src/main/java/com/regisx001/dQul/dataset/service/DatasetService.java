@@ -21,4 +21,9 @@ public interface DatasetService {
      * Triggers statistical profiling for a dataset's columns and updates metadata.
      */
     DatasetDetailResponse profileDataset(UUID id);
+
+    /**
+     * Deletes a dataset entity and its associated column metadata, profiles, rules, and validations.
+     */
+    void deleteDataset(UUID id);
 }

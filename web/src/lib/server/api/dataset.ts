@@ -104,3 +104,29 @@ export async function profileDataset(
         return { ok: false, error: err.message || "Network error profiling dataset" };
     }
 }
+
+/**
+ * Delete a dataset entity.
+ * DELETE /api/v1/datasets/{id}
+ */
+export async function deleteDataset(
+    token: string,
+    id: string
+): Promise<{ ok: boolean; error?: string }> {
+    try {
+        const res = await apiFetchAuthRaw(`/api/v1/datasets/${id}`, token, {
+            method: "DELETE",
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            let body: any = {};
+            if (text && text.trim()) {
+                try { body = JSON.parse(text); } catch { body = {}; }
+            }
+            return { ok: false, error: body.message || "Failed to delete dataset" };
+        }
+        return { ok: true };
+    } catch (err: any) {
+        return { ok: false, error: err.message || "Network error deleting dataset" };
+    }
+}

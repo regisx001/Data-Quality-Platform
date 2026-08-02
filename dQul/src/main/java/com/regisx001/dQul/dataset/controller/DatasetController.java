@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -80,6 +81,26 @@ public class DatasetController {
                     .body(ApiErrorResponse.builder()
                             .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                             .message("Failed to profile dataset: " + e.getMessage())
+                            .build());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteDataset(@PathVariable UUID id) {
+        try {
+            datasetService.deleteDataset(id);
+            return ResponseEntity.noContent().build();
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiErrorResponse.builder()
+                            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                            .message("Failed to delete dataset: " + e.getMessage())
                             .build());
         }
     }

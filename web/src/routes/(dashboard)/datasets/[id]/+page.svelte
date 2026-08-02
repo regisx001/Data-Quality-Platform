@@ -13,6 +13,8 @@
 	import Loader2 from "@lucide/svelte/icons/loader-2";
 	import Sparkles from "@lucide/svelte/icons/sparkles";
 	import Calendar from "@lucide/svelte/icons/calendar";
+	import Trash2 from "@lucide/svelte/icons/trash-2";
+	import * as Dialog from "$lib/components/ui/dialog/index.js";
 	import type { PageData, ActionData } from "./$types";
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -22,6 +24,8 @@
 
 	let activeTab = $state("schema");
 	let isProfiling = $state(false);
+	let isDeleteOpen = $state(false);
+	let isDeleting = $state(false);
 
 	function getNullPercentageColor(pct: number = 0) {
 		if (pct === 0) return "bg-emerald-500 text-emerald-600 dark:text-emerald-400";
@@ -106,17 +110,26 @@
 					<Button
 						type="submit"
 						disabled={isProfiling}
-						class="h-9 px-3.5 rounded-lg text-xs font-medium cursor-pointer gap-1.5"
+						class="h-9 px-3.5 rounded-lg text-xs font-medium cursor-pointer gap-1.5 shadow-xs"
 					>
 						{#if isProfiling}
 							<Loader2 class="size-3.5 animate-spin" />
 							<span>Profiling Column Stats...</span>
 						{:else}
-							<Sparkles class="size-3.5" />
+							<Sparkles class="size-3.5 text-amber-400 fill-amber-400/20" />
 							<span>Run Profiler</span>
 						{/if}
 					</Button>
 				</form>
+
+				<Button
+					variant="outline"
+					onclick={() => (isDeleteOpen = true)}
+					class="h-9 px-3.5 rounded-lg text-xs font-medium cursor-pointer gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-border"
+				>
+					<Trash2 class="size-3.5" />
+					<span>Delete Dataset</span>
+				</Button>
 			</div>
 		</div>
 
@@ -450,4 +463,69 @@
 		</Tabs.Content>
 	</Tabs.Root>
 </div>
+
+<!-- Delete Dataset Confirmation Dialog -->
+<Dialog.Root bind:open={isDeleteOpen}>
+	<Dialog.Content class="sm:max-w-md rounded-xl p-6 border-border bg-card">
+		<Dialog.Header class="space-y-2">
+			<div class="flex items-center gap-3">
+				<div class="w-10 h-10 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
+					<Trash2 class="size-5" />
+				</div>
+				<div>
+					<Dialog.Title class="text-base font-bold tracking-tight text-foreground">
+						Delete Dataset
+					</Dialog.Title>
+					<Dialog.Description class="text-xs text-muted-foreground mt-0.5">
+						Are you sure you want to delete dataset <span class="font-bold text-foreground">'{dataset.name}'</span>?
+					</Dialog.Description>
+				</div>
+			</div>
+		</Dialog.Header>
+
+		<div class="p-3 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg space-y-1 my-2">
+			<p class="font-medium text-foreground">This action cannot be undone.</p>
+			<p>Deleting this dataset will remove its extracted schema, column profiles, quality rules, and validation history.</p>
+		</div>
+
+		<Dialog.Footer class="pt-2 flex items-center justify-end gap-2">
+			<Button
+				type="button"
+				variant="outline"
+				onclick={() => (isDeleteOpen = false)}
+				disabled={isDeleting}
+				class="h-9 rounded-lg text-xs"
+			>
+				Cancel
+			</Button>
+
+			<form
+				action="?/delete"
+				method="POST"
+				use:enhance={() => {
+					isDeleting = true;
+					return async ({ update }) => {
+						isDeleting = false;
+						isDeleteOpen = false;
+						await update();
+					};
+				}}
+			>
+				<Button
+					type="submit"
+					disabled={isDeleting}
+					class="h-9 rounded-lg text-xs font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer"
+				>
+					{#if isDeleting}
+						<Loader2 class="size-3.5 me-1.5 animate-spin" />
+						<span>Deleting...</span>
+					{:else}
+						<Trash2 class="size-3.5 me-1.5" />
+						<span>Confirm Delete</span>
+					{/if}
+				</Button>
+			</form>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
 {/if}

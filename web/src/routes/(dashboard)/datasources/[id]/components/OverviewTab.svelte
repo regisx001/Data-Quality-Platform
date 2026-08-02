@@ -16,6 +16,7 @@
 	import Upload from "@lucide/svelte/icons/upload";
 	import FileText from "@lucide/svelte/icons/file-text";
 	import Plus from "@lucide/svelte/icons/plus";
+	import Trash2 from "@lucide/svelte/icons/trash-2";
 	import { cn } from "$lib/utils";
 	import type { Datasource, DatasetDescriptor } from "$lib/server/api";
 
@@ -38,11 +39,13 @@
 	let selectedDatasetIds = $state<Record<string, boolean>>({});
 	let discoveryError = $state<string | null>(null);
 
-	// CSV Dataset Upload state
+	// CSV Dataset Upload & Removing state
 	let isUploadCsvOpen = $state(false);
 	let isUploadingCsv = $state(false);
 	let csvSourceMode = $state<"upload" | "path">("upload");
 	let selectedFile = $state<File | null>(null);
+	let pendingRemoveDataset = $state<{ id: string; name: string } | null>(null);
+	let isRemovingDataset = $state(false);
 
 	function handleFileSelected(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -187,6 +190,7 @@
 									<th class="py-3 px-4 font-medium">Description</th>
 									<th class="py-3 px-4 font-medium">Row Count</th>
 									<th class="py-3 px-4 font-medium">Dataset ID</th>
+									<th class="py-3 px-4 font-medium text-right">Actions</th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border/60">
@@ -205,7 +209,19 @@
 										<td class="py-3 px-4 font-mono"
 											>{dataset.rowCount ? dataset.rowCount.toLocaleString() : "Read-only"}</td
 										>
-										<td class="py-3 px-4 font-mono text-muted-foreground">{dataset.id}</td>
+										<td class="py-3 px-4 font-mono text-muted-foreground text-[11px]">{dataset.id}</td>
+										<td class="py-3 px-4 text-right">
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												onclick={() => (pendingRemoveDataset = dataset)}
+												title={`Remove dataset '${dataset.name}' from datasource`}
+												class="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-md"
+											>
+												<Trash2 class="size-3.5" />
+											</Button>
+										</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -721,5 +737,71 @@
 				</Button>
 			</Dialog.Footer>
 		</form>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Remove Dataset Confirmation Modal -->
+<Dialog.Root open={!!pendingRemoveDataset} onOpenChange={(open) => { if (!open) pendingRemoveDataset = null; }}>
+	<Dialog.Content class="sm:max-w-md rounded-xl p-6 border-border bg-card">
+		<Dialog.Header class="space-y-2">
+			<div class="flex items-center gap-3">
+				<div class="w-10 h-10 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
+					<Trash2 class="size-5" />
+				</div>
+				<div>
+					<Dialog.Title class="text-base font-bold tracking-tight text-foreground">
+						Remove Dataset
+					</Dialog.Title>
+					<Dialog.Description class="text-xs text-muted-foreground mt-0.5">
+						Are you sure you want to remove dataset <span class="font-bold text-foreground">'{pendingRemoveDataset?.name}'</span> from <span class="font-semibold text-foreground">{datasource.name}</span>?
+					</Dialog.Description>
+				</div>
+			</div>
+		</Dialog.Header>
+
+		<div class="p-3 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg space-y-1 my-2">
+			<p class="font-medium text-foreground">Dataset Unregistration</p>
+			<p>This will remove the dataset registration, its extracted column profiles, and rules from this datasource.</p>
+		</div>
+
+		<Dialog.Footer class="pt-2 flex items-center justify-end gap-2">
+			<Button
+				type="button"
+				variant="outline"
+				onclick={() => (pendingRemoveDataset = null)}
+				disabled={isRemovingDataset}
+				class="h-9 rounded-lg text-xs"
+			>
+				Cancel
+			</Button>
+
+			<form
+				action="?/deleteDataset"
+				method="POST"
+				use:enhance={() => {
+					isRemovingDataset = true;
+					return async ({ update }) => {
+						isRemovingDataset = false;
+						pendingRemoveDataset = null;
+						await update();
+					};
+				}}
+			>
+				<input type="hidden" name="datasetId" value={pendingRemoveDataset?.id} />
+				<Button
+					type="submit"
+					disabled={isRemovingDataset}
+					class="h-9 rounded-lg text-xs font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer"
+				>
+					{#if isRemovingDataset}
+						<Loader2 class="size-3.5 me-1.5 animate-spin" />
+						<span>Removing...</span>
+					{:else}
+						<Trash2 class="size-3.5 me-1.5" />
+						<span>Confirm Remove</span>
+					{/if}
+				</Button>
+			</form>
+		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

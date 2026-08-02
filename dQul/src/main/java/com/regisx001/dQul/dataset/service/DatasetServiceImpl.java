@@ -235,6 +235,13 @@ public class DatasetServiceImpl implements DatasetService {
         return mapToDetailResponse(dataset);
     }
 
+    @Override
+    @Transactional
+    public void deleteDataset(UUID id) {
+        Dataset dataset = resolveDataset(id);
+        datasetRepository.delete(dataset);
+    }
+
     private void profileDatasetInternal(Dataset dataset) {
         if (dataset.getColumns() == null || dataset.getColumns().isEmpty()) {
             syncColumnsFromConnector(dataset);
