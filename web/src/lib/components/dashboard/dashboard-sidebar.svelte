@@ -10,6 +10,7 @@
 	import Layers from "@lucide/svelte/icons/layers";
 	import HelpCircle from "@lucide/svelte/icons/help-circle";
 	import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
+	import Logo from "$lib/components/ui/logo/logo.svelte";
 	import type { ComponentProps } from "svelte";
 
 	let {
@@ -53,19 +54,13 @@
 
 <Sidebar.Root collapsible="offcanvas" {...restProps} bind:ref>
 	<!-- Sidebar Brand Header (matching dashboard-01) -->
-	<Sidebar.Header>
+	<Sidebar.Header class="p-3.5 border-b border-sidebar-border/40">
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
-				<Sidebar.MenuButton size="lg" class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+				<Sidebar.MenuButton size="lg" class="h-20 w-full p-2.5 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent">
 					{#snippet child({ props })}
-						<a href="/datasources" {...props}>
-							<div class="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-								<Database class="size-4" />
-							</div>
-							<div class="grid flex-1 text-start text-sm leading-tight">
-								<span class="truncate font-semibold">Data Quality</span>
-								<span class="truncate text-xs text-muted-foreground">Platform Admin</span>
-							</div>
+						<a href="/datasources" {...props} class="flex items-center justify-start w-full h-full">
+							<Logo class="h-16 w-48 sm:w-52 md:w-56 object-contain" />
 						</a>
 					{/snippet}
 				</Sidebar.MenuButton>

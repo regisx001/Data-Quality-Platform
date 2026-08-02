@@ -6,6 +6,7 @@
 	import ShieldCheck from "@lucide/svelte/icons/shield-check";
 	import AlertCircle from "@lucide/svelte/icons/alert-circle";
 	import Loader2 from "@lucide/svelte/icons/loader-2";
+	import Logo from "$lib/components/ui/logo/logo.svelte";
 	import { enhance } from "$app/forms";
 	import type { HTMLAttributes } from "svelte/elements";
 
@@ -48,11 +49,8 @@
 	<!-- Right Side: Full-Height Auth Login Panel -->
 	<div class="flex flex-col justify-between h-full p-6 sm:p-10 md:p-12 lg:p-16 overflow-y-auto order-2 relative">
 		<!-- Top: Brand Logo -->
-		<div class="flex items-center gap-2.5">
-			<div class="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-				<ShieldCheck class="size-5" />
-			</div>
-			<span class="font-bold tracking-tight text-lg leading-none">DataQuality</span>
+		<div class="flex items-center gap-3 py-2">
+			<Logo class="h-18 md:h-24 w-56 md:w-72 object-contain" />
 		</div>
 
 		<!-- Center: Form Container -->
