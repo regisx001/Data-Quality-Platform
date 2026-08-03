@@ -6,6 +6,15 @@
     "configurations": [
         {
             "type": "java",
+            "name": "SparkProfilePostgres",
+            "request": "launch",
+            "mainClass": "com.regisx001.dQul.examples.SparkProfilePostgres",
+            "projectName": "dQul",
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
             "name": "SparkValidationCmdApp",
             "request": "launch",
             "mainClass": "com.regisx001.dQul.SparkValidationCmdApp",
