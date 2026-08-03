@@ -114,27 +114,27 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
                 : "public";
 
         String sql = """
-            SELECT
-                t.table_schema,
-                t.table_name,
-                t.table_type,
-                pg_get_userbyid(c.relowner) AS owner,
-                COALESCE(obj_description(c.oid), '') AS remarks,
-                pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
-                COALESCE(s.n_live_tup, 0) AS estimated_rows
-            FROM information_schema.tables t
-            JOIN pg_namespace n ON n.nspname = t.table_schema
-            JOIN pg_class c ON c.relnamespace = n.oid AND c.relname = t.table_name
-            LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
-            WHERE t.table_schema = ?
-              AND t.table_type IN ('BASE TABLE', 'VIEW')
-            ORDER BY t.table_name
-            """;
+                SELECT
+                    t.table_schema,
+                    t.table_name,
+                    t.table_type,
+                    pg_get_userbyid(c.relowner) AS owner,
+                    COALESCE(obj_description(c.oid), '') AS remarks,
+                    pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+                    COALESCE(s.n_live_tup, 0) AS estimated_rows
+                FROM information_schema.tables t
+                JOIN pg_namespace n ON n.nspname = t.table_schema
+                JOIN pg_class c ON c.relnamespace = n.oid AND c.relname = t.table_name
+                LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+                WHERE t.table_schema = ?
+                  AND t.table_type IN ('BASE TABLE', 'VIEW')
+                ORDER BY t.table_name
+                """;
 
         log.info("Discovering datasets in PostgreSQL schema '{}'", targetSchema);
 
         try (Connection conn = openConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, targetSchema);
 
@@ -171,23 +171,24 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
     @Override
     public DatasetMetadata getMetadata(String datasetId) {
         String[] parts = datasetId.split("\\.", 2);
-        String schema = (parts.length > 1 && !parts[0].isBlank()) ? parts[0] : (config.schema() != null && !config.schema().isBlank() ? config.schema() : "public");
+        String schema = (parts.length > 1 && !parts[0].isBlank()) ? parts[0]
+                : (config.schema() != null && !config.schema().isBlank() ? config.schema() : "public");
         String tableName = parts.length > 1 ? parts[1] : datasetId;
 
         List<ColumnMetadata> columns = new ArrayList<>();
         long estimatedRows = -1;
 
         String colSql = """
-            SELECT column_name, data_type, is_nullable
-            FROM information_schema.columns
-            WHERE table_schema = ? AND table_name = ?
-            ORDER BY ordinal_position
-            """;
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = ? AND table_name = ?
+                ORDER BY ordinal_position
+                """;
 
         log.info("Retrieving column metadata for '{}.{}' via plain JDBC", schema, tableName);
 
         try (Connection conn = openConnection();
-             PreparedStatement stmt = conn.prepareStatement(colSql)) {
+                PreparedStatement stmt = conn.prepareStatement(colSql)) {
 
             stmt.setString(1, schema);
             stmt.setString(2, tableName);
