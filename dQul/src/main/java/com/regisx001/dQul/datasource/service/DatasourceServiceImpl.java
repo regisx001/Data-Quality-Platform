@@ -23,6 +23,7 @@ import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.repository.DatasourceRepository;
 import com.regisx001.dQul.dataset.service.DatasetService;
+import com.regisx001.dQul.storage.minio.MinioStorageService;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +40,20 @@ public class DatasourceServiceImpl implements DatasourceService {
     private final ConnectorFactory connectorFactory;
     private final ObjectMapper objectMapper;
     private final DatasetService datasetService;
+    private final MinioStorageService minioStorageService;
 
     public DatasourceServiceImpl(DatasourceRepository datasourceRepository,
             DatasetRepository datasetRepository,
             ConnectorFactory connectorFactory,
             ObjectMapper objectMapper,
-            @Lazy DatasetService datasetService) {
+            @Lazy DatasetService datasetService,
+            MinioStorageService minioStorageService) {
         this.datasourceRepository = datasourceRepository;
         this.datasetRepository = datasetRepository;
         this.connectorFactory = connectorFactory;
         this.objectMapper = objectMapper;
         this.datasetService = datasetService;
+        this.minioStorageService = minioStorageService;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -159,11 +163,23 @@ public class DatasourceServiceImpl implements DatasourceService {
 
     @Override
     public void deleteDatasource(UUID id) {
-        if (!datasourceRepository.existsById(id)) {
-            throw new EntityNotFoundException(
-                    "Datasource not found with id: " + id);
+        Datasource datasource = datasourceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Datasource not found with id: " + id));
+
+        if ("CSV".equalsIgnoreCase(datasource.getType()) && datasource.getConfigJson() != null) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(datasource.getConfigJson());
+                String filePath = root.has("filePath") ? root.get("filePath").asText(null) : null;
+                String objectName = root.has("objectName") ? root.get("objectName").asText(null) : null;
+                String bucket = root.has("bucket") ? root.get("bucket").asText(null) : null;
+
+                minioStorageService.deleteCsvFile(filePath, objectName, bucket);
+            } catch (Exception e) {
+                log.warn("Failed to delete CSV files for datasource '{}': {}", datasource.getName(), e.getMessage());
+            }
         }
-        datasourceRepository.deleteById(id);
+
+        datasourceRepository.delete(datasource);
     }
 
     // ── Queries ───────────────────────────────────────────────────────────
@@ -316,11 +332,6 @@ public class DatasourceServiceImpl implements DatasourceService {
                 dataset.setRowCount(rowCount);
             }
             Dataset saved = datasetRepository.save(dataset);
-            try {
-                datasetService.profileDataset(saved.getId());
-            } catch (Exception ex) {
-                log.warn("Auto-profiling dataset '{}' ({}) failed during import: {}", saved.getName(), saved.getId(), ex.getMessage());
-            }
             imported.add(saved);
         }
 

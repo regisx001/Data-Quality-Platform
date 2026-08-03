@@ -36,6 +36,8 @@ import com.regisx001.dQul.dataset.repository.DatasetColumnRepository;
 import com.regisx001.dQul.dataset.repository.DatasetRepository;
 import com.regisx001.dQul.datasource.domain.Datasource;
 
+import com.regisx001.dQul.compute.spark.SparkSessionProvider;
+import com.regisx001.dQul.storage.minio.MinioStorageService;
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
@@ -49,18 +51,24 @@ public class DatasetServiceImpl implements DatasetService {
     private final ColumnProfileRepository profileRepository;
     private final ConnectorFactory connectorFactory;
     private final ObjectMapper objectMapper;
+    private final SparkSessionProvider sparkSessionProvider;
+    private final MinioStorageService minioStorageService;
 
     public DatasetServiceImpl(
             DatasetRepository datasetRepository,
             DatasetColumnRepository columnRepository,
             ColumnProfileRepository profileRepository,
             ConnectorFactory connectorFactory,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            SparkSessionProvider sparkSessionProvider,
+            MinioStorageService minioStorageService) {
         this.datasetRepository = datasetRepository;
         this.columnRepository = columnRepository;
         this.profileRepository = profileRepository;
         this.connectorFactory = connectorFactory;
         this.objectMapper = objectMapper;
+        this.sparkSessionProvider = sparkSessionProvider;
+        this.minioStorageService = minioStorageService;
     }
 
     @Override
@@ -255,7 +263,25 @@ public class DatasetServiceImpl implements DatasetService {
     @Transactional
     public void deleteDataset(UUID id) {
         Dataset dataset = resolveDataset(id);
+        deleteAssociatedCsvFiles(dataset);
         datasetRepository.delete(dataset);
+    }
+
+    private void deleteAssociatedCsvFiles(Dataset dataset) {
+        if (dataset == null || dataset.getDatasource() == null) return;
+        Datasource datasource = dataset.getDatasource();
+        if ("CSV".equalsIgnoreCase(datasource.getType()) && datasource.getConfigJson() != null) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(datasource.getConfigJson());
+                String filePath = root.has("filePath") ? root.get("filePath").asText(null) : null;
+                String objectName = root.has("objectName") ? root.get("objectName").asText(null) : null;
+                String bucket = root.has("bucket") ? root.get("bucket").asText(null) : null;
+
+                minioStorageService.deleteCsvFile(filePath, objectName, bucket);
+            } catch (Exception e) {
+                log.warn("Failed to delete CSV files for dataset '{}': {}", dataset.getName(), e.getMessage());
+            }
+        }
     }
 
     private void profileDatasetInternal(Dataset dataset) {

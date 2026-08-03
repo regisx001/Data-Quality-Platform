@@ -91,6 +91,53 @@ public class MinioStorageService {
                 storedInMinio);
     }
 
+    public void deleteCsvFile(String filePath, String objectName, String bucketName) {
+        // 1. Delete local file copy from uploads/
+        if (filePath != null && !filePath.isBlank()) {
+            try {
+                Path path = Paths.get(filePath).toAbsolutePath().normalize();
+                if (Files.exists(path)) {
+                    Files.delete(path);
+                    log.info("Deleted local CSV file copy at '{}'", path);
+                }
+            } catch (Exception e) {
+                log.warn("Could not delete local CSV file copy at '{}': {}", filePath, e.getMessage());
+            }
+        }
+
+        // 2. Delete object from MinIO
+        if (objectName != null && !objectName.isBlank()) {
+            String bucket = (bucketName != null && !bucketName.isBlank())
+                    ? bucketName
+                    : (minioProperties.getBucket() != null ? minioProperties.getBucket() : "csv-uploads");
+            try {
+                minioClient.removeObject(
+                        io.minio.RemoveObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(objectName)
+                                .build());
+                log.info("Successfully deleted MinIO object '{}' from bucket '{}'", objectName, bucket);
+            } catch (Exception e) {
+                log.warn("Could not delete object '{}' from MinIO bucket '{}': {}", objectName, bucket, e.getMessage());
+            }
+        } else if (filePath != null && filePath.contains("uploads")) {
+            try {
+                Path path = Paths.get(filePath).toAbsolutePath().normalize();
+                String fileName = path.getFileName().toString();
+                String inferredObjectName = "csv/" + fileName;
+                String bucket = minioProperties.getBucket() != null ? minioProperties.getBucket() : "csv-uploads";
+                minioClient.removeObject(
+                        io.minio.RemoveObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(inferredObjectName)
+                                .build());
+                log.info("Successfully deleted inferred MinIO object '{}' from bucket '{}'", inferredObjectName, bucket);
+            } catch (Exception e) {
+                log.warn("Could not delete inferred MinIO object for '{}': {}", filePath, e.getMessage());
+            }
+        }
+    }
+
     public record FileUploadResult(
             String filePath,
             String objectName,
