@@ -39,7 +39,7 @@ out/
 
 # IDE - VS Code
 .settings/
-.vscode/
+vscode/
 *.code-workspace
 
 # IDE - NetBeans
