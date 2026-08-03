@@ -48,4 +48,9 @@ public class DatasetColumn {
     @JoinColumn(name = "dataset_id", nullable = false)
     @JsonIgnoreProperties({"columns", "qualityRules", "validations", "datasource"})
     private Dataset dataset;
+
+    @jakarta.persistence.OneToMany(mappedBy = "column", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    @JsonIgnoreProperties({"column"})
+    private java.util.List<ColumnProfile> profiles = new java.util.ArrayList<>();
 }

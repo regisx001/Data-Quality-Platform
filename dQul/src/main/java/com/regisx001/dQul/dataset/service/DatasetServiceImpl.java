@@ -227,6 +227,22 @@ public class DatasetServiceImpl implements DatasetService {
         return s.isEmpty() || s.equalsIgnoreCase("null") || s.equalsIgnoreCase("none") || s.equalsIgnoreCase("n/a");
     }
 
+    public static boolean isMinMaxComputable(String dataType) {
+        if (dataType == null) return false;
+        String type = dataType.toUpperCase().trim();
+
+        // Numeric types
+        boolean isNumeric = type.contains("INT") || type.contains("NUM") || type.contains("FLOAT")
+                || type.contains("DOUBLE") || type.contains("DECIMAL") || type.contains("REAL")
+                || type.contains("SERIAL") || type.contains("LONG") || type.contains("SHORT")
+                || type.contains("BYTE") || type.contains("NUMBER");
+
+        // Date and Time types
+        boolean isDateTime = type.contains("DATE") || type.contains("TIME") || type.contains("TIMESTAMP");
+
+        return isNumeric || isDateTime;
+    }
+
     @Override
     @Transactional
     public DatasetDetailResponse profileDataset(UUID id) {
@@ -316,20 +332,30 @@ public class DatasetServiceImpl implements DatasetService {
                         col.getDataType().toUpperCase().contains("REAL") ||
                         col.getDataType().toUpperCase().contains("SERIAL"));
 
+                boolean isComputable = isMinMaxComputable(col.getDataType());
+
+                String minSql = isComputable
+                        ? "MIN(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END)::text AS min_val".formatted(colName)
+                        : "NULL::text AS min_val";
+
+                String maxSql = isComputable
+                        ? "MAX(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END)::text AS max_val".formatted(colName)
+                        : "NULL::text AS max_val";
+
                 String avgSql = isNumeric
-                        ? "AVG(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END) AS avg_val"
+                        ? "AVG(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END) AS avg_val".formatted(colName)
                         : "NULL::numeric AS avg_val";
 
                 String colSql = """
                         SELECT
                             COUNT(CASE WHEN "%1$s" IS NULL OR LOWER(TRIM("%1$s"::text)) = 'null' OR TRIM("%1$s"::text) = '' OR LOWER(TRIM("%1$s"::text)) = 'none' OR LOWER(TRIM("%1$s"::text)) = 'n/a' THEN 1 END) AS null_count,
                             COUNT(DISTINCT CASE WHEN "%1$s" IS NOT NULL AND LOWER(TRIM("%1$s"::text)) <> 'null' AND TRIM("%1$s"::text) <> '' AND LOWER(TRIM("%1$s"::text)) <> 'none' AND LOWER(TRIM("%1$s"::text)) <> 'n/a' THEN "%1$s"::text END) AS distinct_count,
-                            MIN(CASE WHEN "%1$s" IS NOT NULL AND LOWER(TRIM("%1$s"::text)) <> 'null' AND TRIM("%1$s"::text) <> '' THEN "%1$s"::text END) AS min_val,
-                            MAX(CASE WHEN "%1$s" IS NOT NULL AND LOWER(TRIM("%1$s"::text)) <> 'null' AND TRIM("%1$s"::text) <> '' THEN "%1$s"::text END) AS max_val,
-                            %2$s
-                        FROM "%3$s"."%4$s"
+                            %2$s,
+                            %3$s,
+                            %4$s
+                        FROM "%5$s"."%6$s"
                         """
-                        .formatted(colName, avgSql, schema, tableName);
+                        .formatted(colName, minSql, maxSql, avgSql, schema, tableName);
 
                 long nullCount = 0L;
                 long distinctCount = 0L;
@@ -358,20 +384,27 @@ public class DatasetServiceImpl implements DatasetService {
 
                 double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
 
-                ColumnProfile profile = ColumnProfile.builder()
-                        .column(col)
-                        .nullCount(nullCount)
-                        .nullPercentage(nullPct)
-                        .distinctCount(distinctCount)
-                        .minValue(minVal)
-                        .maxValue(maxVal)
-                        .avgValue(avgVal)
-                        .profiledAt(now)
-                        .build();
-
-                profileRepository.save(profile);
+                saveOrUpdateProfile(col, nullCount, nullPct, distinctCount, minVal, maxVal, avgVal, now);
             }
         }
+    }
+
+    private ColumnProfile saveOrUpdateProfile(DatasetColumn col, long nullCount, double nullPct,
+            long distinctCount, String minVal, String maxVal, Double avgVal, LocalDateTime profiledAt) {
+        ColumnProfile profile = (col.getId() != null)
+                ? profileRepository.findFirstByColumnIdOrderByProfiledAtDesc(col.getId())
+                        .orElseGet(() -> ColumnProfile.builder().column(col).build())
+                : ColumnProfile.builder().column(col).build();
+
+        profile.setNullCount(nullCount);
+        profile.setNullPercentage(nullPct);
+        profile.setDistinctCount(distinctCount);
+        profile.setMinValue(minVal);
+        profile.setMaxValue(maxVal);
+        profile.setAvgValue(avgVal);
+        profile.setProfiledAt(profiledAt);
+
+        return profileRepository.save(profile);
     }
 
     private void profileCsvDataset(Dataset dataset, ConnectorConfig.Csv config, LocalDateTime now) throws Exception {
@@ -407,8 +440,11 @@ public class DatasetServiceImpl implements DatasetService {
             java.util.Set<String> distinctSet = new java.util.HashSet<>();
             String minVal = null;
             String maxVal = null;
+            Double minNum = null;
+            Double maxNum = null;
             double sum = 0;
             long numCount = 0;
+            boolean isComputable = isMinMaxComputable(col.getDataType());
 
             for (String[] row : dataRows) {
                 String val = (colIdx >= 0 && colIdx < row.length) ? row[colIdx].trim().replace("\"", "") : null;
@@ -416,34 +452,45 @@ public class DatasetServiceImpl implements DatasetService {
                     nullCount++;
                 } else {
                     distinctSet.add(val);
-                    if (minVal == null || val.compareTo(minVal) < 0)
-                        minVal = val;
-                    if (maxVal == null || val.compareTo(maxVal) > 0)
-                        maxVal = val;
-                    try {
-                        double d = Double.parseDouble(val);
-                        sum += d;
-                        numCount++;
-                    } catch (NumberFormatException ignored) {
+                    if (isComputable) {
+                        try {
+                            double d = Double.parseDouble(val);
+                            sum += d;
+                            numCount++;
+                            if (minNum == null || d < minNum) {
+                                minNum = d;
+                            }
+                            if (maxNum == null || d > maxNum) {
+                                maxNum = d;
+                            }
+                        } catch (NumberFormatException ignored) {
+                            if (minVal == null || val.compareTo(minVal) < 0)
+                                minVal = val;
+                            if (maxVal == null || val.compareTo(maxVal) > 0)
+                                maxVal = val;
+                        }
                     }
                 }
+            }
+
+            if (isComputable) {
+                if (numCount > 0) {
+                    if (minNum != null) {
+                        minVal = (minNum % 1 == 0) ? String.valueOf(minNum.longValue()) : String.valueOf(minNum);
+                    }
+                    if (maxNum != null) {
+                        maxVal = (maxNum % 1 == 0) ? String.valueOf(maxNum.longValue()) : String.valueOf(maxNum);
+                    }
+                }
+            } else {
+                minVal = null;
+                maxVal = null;
             }
 
             double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
             Double avgVal = numCount > 0 ? (sum / numCount) : null;
 
-            ColumnProfile profile = ColumnProfile.builder()
-                    .column(col)
-                    .nullCount(nullCount)
-                    .nullPercentage(nullPct)
-                    .distinctCount((long) distinctSet.size())
-                    .minValue(minVal)
-                    .maxValue(maxVal)
-                    .avgValue(avgVal)
-                    .profiledAt(now)
-                    .build();
-
-            profileRepository.save(profile);
+            saveOrUpdateProfile(col, nullCount, nullPct, (long) distinctSet.size(), minVal, maxVal, avgVal, now);
         }
     }
 
@@ -454,25 +501,17 @@ public class DatasetServiceImpl implements DatasetService {
             double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
             long distinctCount = Math.max(1L, (long) (totalRows * (0.1 + Math.random() * 0.8)));
 
-            String minVal = col.getDataType().toUpperCase().contains("INT")
-                    || col.getDataType().toUpperCase().contains("NUM") ? "1" : "A";
-            String maxVal = col.getDataType().toUpperCase().contains("INT")
-                    || col.getDataType().toUpperCase().contains("NUM") ? String.valueOf(totalRows) : "Z";
-            Double avgVal = col.getDataType().toUpperCase().contains("INT")
-                    || col.getDataType().toUpperCase().contains("NUM") ? (totalRows / 2.0) : null;
+            boolean isComputable = isMinMaxComputable(col.getDataType());
+            boolean isNumeric = col.getDataType() != null && (col.getDataType().toUpperCase().contains("INT")
+                    || col.getDataType().toUpperCase().contains("NUM")
+                    || col.getDataType().toUpperCase().contains("FLOAT")
+                    || col.getDataType().toUpperCase().contains("DOUBLE"));
 
-            ColumnProfile profile = ColumnProfile.builder()
-                    .column(col)
-                    .nullCount(nullCount)
-                    .nullPercentage(nullPct)
-                    .distinctCount(distinctCount)
-                    .minValue(minVal)
-                    .maxValue(maxVal)
-                    .avgValue(avgVal)
-                    .profiledAt(now)
-                    .build();
+            String minVal = isComputable ? (isNumeric ? "1" : "2026-01-01") : null;
+            String maxVal = isComputable ? (isNumeric ? String.valueOf(totalRows) : "2026-12-31") : null;
+            Double avgVal = isNumeric ? (totalRows / 2.0) : null;
 
-            profileRepository.save(profile);
+            saveOrUpdateProfile(col, nullCount, nullPct, distinctCount, minVal, maxVal, avgVal, now);
         }
     }
 

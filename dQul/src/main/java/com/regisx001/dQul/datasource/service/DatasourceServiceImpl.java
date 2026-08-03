@@ -22,24 +22,34 @@ import com.regisx001.dQul.dataset.repository.DatasetRepository;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.repository.DatasourceRepository;
+import com.regisx001.dQul.dataset.service.DatasetService;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 
 @Service
 @Transactional
 public class DatasourceServiceImpl implements DatasourceService {
 
+    private static final Logger log = LoggerFactory.getLogger(DatasourceServiceImpl.class);
+
     private final DatasourceRepository datasourceRepository;
     private final DatasetRepository datasetRepository;
     private final ConnectorFactory connectorFactory;
     private final ObjectMapper objectMapper;
+    private final DatasetService datasetService;
 
     public DatasourceServiceImpl(DatasourceRepository datasourceRepository,
             DatasetRepository datasetRepository,
-            ConnectorFactory connectorFactory, ObjectMapper objectMapper) {
+            ConnectorFactory connectorFactory,
+            ObjectMapper objectMapper,
+            @Lazy DatasetService datasetService) {
         this.datasourceRepository = datasourceRepository;
         this.datasetRepository = datasetRepository;
         this.connectorFactory = connectorFactory;
         this.objectMapper = objectMapper;
+        this.datasetService = datasetService;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
@@ -306,6 +316,11 @@ public class DatasourceServiceImpl implements DatasourceService {
                 dataset.setRowCount(rowCount);
             }
             Dataset saved = datasetRepository.save(dataset);
+            try {
+                datasetService.profileDataset(saved.getId());
+            } catch (Exception ex) {
+                log.warn("Auto-profiling dataset '{}' ({}) failed during import: {}", saved.getName(), saved.getId(), ex.getMessage());
+            }
             imported.add(saved);
         }
 

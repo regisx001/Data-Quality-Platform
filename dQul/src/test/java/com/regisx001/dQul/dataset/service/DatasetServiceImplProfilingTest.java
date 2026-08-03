@@ -27,4 +27,25 @@ class DatasetServiceImplProfilingTest {
         assertFalse(DatasetServiceImpl.isNullValue("0"));
         assertFalse(DatasetServiceImpl.isNullValue("false"));
     }
+
+    @Test
+    @DisplayName("isMinMaxComputable should return true for numeric & date/time types and false for string/uuid/json/unknown")
+    void testIsMinMaxComputable() {
+        assertTrue(DatasetServiceImpl.isMinMaxComputable("INTEGER"));
+        assertTrue(DatasetServiceImpl.isMinMaxComputable("BIGINT"));
+        assertTrue(DatasetServiceImpl.isMinMaxComputable("DOUBLE"));
+        assertTrue(DatasetServiceImpl.isMinMaxComputable("FLOAT"));
+        assertTrue(DatasetServiceImpl.isMinMaxComputable("TIMESTAMP"));
+        assertTrue(DatasetServiceImpl.isMinMaxComputable("DATE"));
+        assertTrue(DatasetServiceImpl.isMinMaxComputable("LONG"));
+
+        assertFalse(DatasetServiceImpl.isMinMaxComputable("STRING"));
+        assertFalse(DatasetServiceImpl.isMinMaxComputable("VARCHAR"));
+        assertFalse(DatasetServiceImpl.isMinMaxComputable("TEXT"));
+        assertFalse(DatasetServiceImpl.isMinMaxComputable("JSON"));
+        assertFalse(DatasetServiceImpl.isMinMaxComputable("UUID"));
+        assertFalse(DatasetServiceImpl.isMinMaxComputable("UNKNOWN"));
+        assertFalse(DatasetServiceImpl.isMinMaxComputable("BOOLEAN"));
+        assertFalse(DatasetServiceImpl.isMinMaxComputable(null));
+    }
 }
