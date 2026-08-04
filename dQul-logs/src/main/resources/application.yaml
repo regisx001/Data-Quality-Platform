@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: logs
+
+  datasource:
+    url: ${DQUL_LOGS_DATABASE_URL}
+    username: ${DQUL_LOGS_DATABASE_USERNAME}
+    password: ${DQUL_LOGS_DATABASE_PASSWORD}
+    driver-class-name: ${DATABASE_DRIVER}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+
+
+server:
+  port: 7001

@@ -3,9 +3,9 @@ spring:
     name: dQul
 
   datasource:
-    url: ${DATABASE_URL}
-    username: ${DATABASE_USERNAME}
-    password: ${DATABASE_PASSWORD}
+    url: ${DQUL_DATABASE_URL}
+    username: ${DQUL_DATABASE_USERNAME}
+    password: ${DQUL_DATABASE_PASSWORD}
     driver-class-name: ${DATABASE_DRIVER}
     hikari:
       maximum-pool-size: 10
