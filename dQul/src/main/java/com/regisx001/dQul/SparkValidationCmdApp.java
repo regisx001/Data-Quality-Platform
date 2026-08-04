@@ -18,28 +18,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.WebApplicationType;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.stereotype.Component;
 
 import com.regisx001.dQul.compute.spark.SparkProvider;
 
 /**
- * Command-line application testing SparkSession via SparkProvider.
+ * Command-line runner testing SparkSession via SparkProvider.
  * 
  * Dynamically selects a dataset from uploads/csv/. If no CSV dataset exists in
- * uploads/csv/,
- * it runs in Spark test mode to verify Spark operations.
- * 
- * Spring web environment is disabled (WebApplicationType.NONE).
+ * uploads/csv/, it runs in Spark test mode to verify Spark operations.
  */
-@SpringBootApplication(scanBasePackages = { "com.regisx001.dQul.compute.spark" }, excludeName = {
-        "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration",
-        "org.springframework.boot.jdbc.autoconfigure.JdbcTemplateAutoConfiguration",
-        "org.springframework.boot.orm.jpa.hibernate.HibernateJpaAutoConfiguration",
-        "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration",
-        "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration",
-        "org.springframework.boot.devtools.autoconfigure.DevToolsDataSourceAutoConfiguration"
-})
+// @Component
 public class SparkValidationCmdApp implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SparkValidationCmdApp.class);
@@ -53,7 +43,7 @@ public class SparkValidationCmdApp implements CommandLineRunner {
     }
 
     public static void main(String[] args) {
-        log.info("Starting Spark Validation Command Line Application (Web environment disabled)...");
+        log.info("Starting Spark Validation Command Line Application...");
         new SpringApplicationBuilder(SparkValidationCmdApp.class)
                 .web(WebApplicationType.NONE)
                 .run(args);
@@ -83,7 +73,6 @@ public class SparkValidationCmdApp implements CommandLineRunner {
         Path targetPath = discoverCsvDataset(args);
 
         if (targetPath == null) {
-            // Fallback: No CSV dataset found -> Test SparkSession working status only
             System.out.println("[WARNING] No CSV dataset found in '" + UPLOADS_CSV_DIR + "'.");
             System.out.println(" -> Executing Spark test mode to verify SparkSession functionality...");
 
@@ -125,7 +114,6 @@ public class SparkValidationCmdApp implements CommandLineRunner {
             Map<String, Long> columnMissingCounts = new HashMap<>();
 
             for (String colName : columns) {
-                // Check for null, NaN, or empty string
                 Column isMissingCond = functions.col(colName).isNull()
                         .or(functions.isnan(functions.col(colName)))
                         .or(functions.trim(functions.col(colName)).equalTo(""));
@@ -169,8 +157,6 @@ public class SparkValidationCmdApp implements CommandLineRunner {
     }
 
     private Path discoverCsvDataset(String... args) {
-        // If a specific file path argument is passed via CLI args, try loading that
-        // first
         if (args != null && args.length > 0 && !args[0].isBlank()) {
             Path cliPath = Paths.get(args[0]).toAbsolutePath().normalize();
             if (Files.exists(cliPath) && Files.isRegularFile(cliPath)) {
@@ -178,7 +164,6 @@ public class SparkValidationCmdApp implements CommandLineRunner {
             }
         }
 
-        // Search in uploads/csv relative directory candidates
         Path[] candidateDirs = new Path[] {
                 Paths.get(UPLOADS_CSV_DIR),
                 Paths.get("dQul", UPLOADS_CSV_DIR),

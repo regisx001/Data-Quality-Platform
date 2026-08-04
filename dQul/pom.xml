@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.0</version>
+		<version>3.4.2</version>
 		<relativePath/>
 		<!-- lookup parent from repository -->
 	</parent>
@@ -58,8 +58,8 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-flyway</artifactId>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>
@@ -70,11 +70,6 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -156,7 +151,8 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<jvmArguments>--add-opens=java.base/sun.nio.ch=ALL-UNNAMED</jvmArguments>
+					<mainClass>com.regisx001.dQul.DQulApplication</mainClass>
+					<jvmArguments>--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED</jvmArguments>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
@@ -209,7 +205,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<argLine>--add-opens=java.base/sun.nio.ch=ALL-UNNAMED</argLine>
+					<argLine>--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED</argLine>
 				</configuration>
 			</plugin>
 		</plugins>

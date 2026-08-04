@@ -15,5 +15,7 @@ public enum DataType {
     BINARY,
     ARRAY,
     STRUCT,
+    UUID,
+    JSON,
     UNKNOWN
 }

@@ -269,7 +269,13 @@ public class PostgresDataSourceConnector implements DataSourceConnector {
             case "bytea", "bit", "bit varying" ->
                 DataType.BINARY;
 
-            case "array", "json", "jsonb" ->
+            case "uuid" ->
+                DataType.UUID;
+
+            case "json", "jsonb" ->
+                DataType.JSON;
+
+            case "array" ->
                 DataType.STRING;
 
             default -> {

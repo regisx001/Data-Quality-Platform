@@ -16,18 +16,59 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 
+import org.apache.spark.sql.Column;
+import org.apache.spark.sql.Row;
+
+import static org.apache.spark.sql.functions.avg;
+import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.count;
+import static org.apache.spark.sql.functions.countDistinct;
+import static org.apache.spark.sql.functions.expr;
+import static org.apache.spark.sql.functions.kurtosis;
+import static org.apache.spark.sql.functions.length;
+import static org.apache.spark.sql.functions.lit;
+import static org.apache.spark.sql.functions.max;
+import static org.apache.spark.sql.functions.min;
+import static org.apache.spark.sql.functions.percentile_approx;
+import static org.apache.spark.sql.functions.skewness;
+import static org.apache.spark.sql.functions.stddev;
+import static org.apache.spark.sql.functions.sum;
+import static org.apache.spark.sql.functions.trim;
+import static org.apache.spark.sql.functions.variance;
+import static org.apache.spark.sql.functions.when;
+
+import org.apache.spark.sql.types.BooleanType;
+import org.apache.spark.sql.types.ByteType;
+import org.apache.spark.sql.types.CharType;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.DateType;
+import org.apache.spark.sql.types.DecimalType;
+import org.apache.spark.sql.types.DoubleType;
+import org.apache.spark.sql.types.FloatType;
+import org.apache.spark.sql.types.IntegerType;
+import org.apache.spark.sql.types.LongType;
+import org.apache.spark.sql.types.ShortType;
+import org.apache.spark.sql.types.StringType;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
+import org.apache.spark.sql.types.TimestampNTZType;
+import org.apache.spark.sql.types.TimestampType;
+import org.apache.spark.sql.types.VarcharType;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.regisx001.dQul.compute.spark.SparkSessionProvider;
 import com.regisx001.dQul.connector.ConnectorConfig;
 import com.regisx001.dQul.connector.ConnectorFactory;
 import com.regisx001.dQul.connector.DataSourceConnector;
-import com.regisx001.dQul.connector.api.ColumnMetadata;
+import com.regisx001.dQul.connector.api.DatasetDescriptor;
 import com.regisx001.dQul.connector.api.DatasetMetadata;
 import com.regisx001.dQul.dataset.domain.ColumnProfile;
 import com.regisx001.dQul.dataset.domain.Dataset;
 import com.regisx001.dQul.dataset.domain.DatasetColumn;
+import com.regisx001.dQul.dataset.domain.TableProfile;
 import com.regisx001.dQul.dataset.dto.ColumnDetailDto;
 import com.regisx001.dQul.dataset.dto.DataPreviewResult;
 import com.regisx001.dQul.dataset.dto.DatasetDetailResponse;
@@ -35,9 +76,8 @@ import com.regisx001.dQul.dataset.repository.ColumnProfileRepository;
 import com.regisx001.dQul.dataset.repository.DatasetColumnRepository;
 import com.regisx001.dQul.dataset.repository.DatasetRepository;
 import com.regisx001.dQul.datasource.domain.Datasource;
-
-import com.regisx001.dQul.compute.spark.SparkSessionProvider;
 import com.regisx001.dQul.storage.minio.MinioStorageService;
+
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
@@ -76,7 +116,6 @@ public class DatasetServiceImpl implements DatasetService {
     public DatasetDetailResponse getDatasetById(UUID id) {
         Dataset dataset = resolveDataset(id);
 
-        // Auto-extract columns if not populated yet
         if (dataset.getColumns() == null || dataset.getColumns().isEmpty()) {
             syncColumnsFromConnector(dataset);
         }
@@ -103,7 +142,7 @@ public class DatasetServiceImpl implements DatasetService {
             }
         }
 
-        // Fallback demo/preview generation if connector is offline
+        // Fallback preview generation if connector is offline
         List<DatasetColumn> cols = dataset.getColumns();
         List<String> colNames = cols.stream().map(DatasetColumn::getName).toList();
         if (colNames.isEmpty()) {
@@ -113,17 +152,17 @@ public class DatasetServiceImpl implements DatasetService {
         List<Map<String, Object>> mockRows = new ArrayList<>();
         for (int r = 1; r <= safeLimit; r++) {
             Map<String, Object> mockRow = new HashMap<>();
-            for (String col : colNames) {
-                if (col.toLowerCase().contains("id")) {
-                    mockRow.put(col, r);
-                } else if (col.toLowerCase().contains("date") || col.toLowerCase().contains("time")
-                        || col.toLowerCase().contains("at")) {
-                    mockRow.put(col, LocalDateTime.now().minusDays(r).toString());
-                } else if (col.toLowerCase().contains("price") || col.toLowerCase().contains("amount")
-                        || col.toLowerCase().contains("count")) {
-                    mockRow.put(col, Math.round(r * 15.5 * 100.0) / 100.0);
+            for (String colName : colNames) {
+                if (colName.toLowerCase().contains("id")) {
+                    mockRow.put(colName, r);
+                } else if (colName.toLowerCase().contains("date") || colName.toLowerCase().contains("time")
+                        || colName.toLowerCase().contains("at")) {
+                    mockRow.put(colName, LocalDateTime.now().minusDays(r).toString());
+                } else if (colName.toLowerCase().contains("price") || colName.toLowerCase().contains("amount")
+                        || colName.toLowerCase().contains("count")) {
+                    mockRow.put(colName, Math.round(r * 15.5 * 100.0) / 100.0);
                 } else {
-                    mockRow.put(col, "Sample " + col + " #" + r);
+                    mockRow.put(colName, "Sample " + colName + " #" + r);
                 }
             }
             mockRows.add(mockRow);
@@ -151,7 +190,6 @@ public class DatasetServiceImpl implements DatasetService {
             props.setProperty("sslmode", "require");
         }
         String url = config.jdbcUrl();
-
         String sql = "SELECT * FROM \"%s\".\"%s\" LIMIT ?".formatted(schema, tableName);
 
         List<String> columns = new ArrayList<>();
@@ -236,16 +274,15 @@ public class DatasetServiceImpl implements DatasetService {
     }
 
     public static boolean isMinMaxComputable(String dataType) {
-        if (dataType == null) return false;
+        if (dataType == null)
+            return false;
         String type = dataType.toUpperCase().trim();
 
-        // Numeric types
         boolean isNumeric = type.contains("INT") || type.contains("NUM") || type.contains("FLOAT")
                 || type.contains("DOUBLE") || type.contains("DECIMAL") || type.contains("REAL")
                 || type.contains("SERIAL") || type.contains("LONG") || type.contains("SHORT")
                 || type.contains("BYTE") || type.contains("NUMBER");
 
-        // Date and Time types
         boolean isDateTime = type.contains("DATE") || type.contains("TIME") || type.contains("TIMESTAMP");
 
         return isNumeric || isDateTime;
@@ -255,7 +292,7 @@ public class DatasetServiceImpl implements DatasetService {
     @Transactional
     public DatasetDetailResponse profileDataset(UUID id) {
         Dataset dataset = resolveDataset(id);
-        profileDatasetInternal(dataset);
+        profileDatasetPipeline(dataset);
         return mapToDetailResponse(dataset);
     }
 
@@ -268,7 +305,8 @@ public class DatasetServiceImpl implements DatasetService {
     }
 
     private void deleteAssociatedCsvFiles(Dataset dataset) {
-        if (dataset == null || dataset.getDatasource() == null) return;
+        if (dataset == null || dataset.getDatasource() == null)
+            return;
         Datasource datasource = dataset.getDatasource();
         if ("CSV".equalsIgnoreCase(datasource.getType()) && datasource.getConfigJson() != null) {
             try {
@@ -284,135 +322,342 @@ public class DatasetServiceImpl implements DatasetService {
         }
     }
 
-    private void profileDatasetInternal(Dataset dataset) {
-        if (dataset.getColumns() == null || dataset.getColumns().isEmpty()) {
-            syncColumnsFromConnector(dataset);
-        }
+    // ─────────────────────────────────────────────────────────────────────────
+    // UNIFIED SPARK PROFILING ENGINE PIPELINE
+    // ─────────────────────────────────────────────────────────────────────────
 
-        LocalDateTime now = LocalDateTime.now();
-        dataset.setLastValidated(now);
-
-        Datasource datasource = dataset.getDatasource();
-        boolean profiledReal = false;
-
-        if (datasource != null && datasource.getConfigJson() != null && !datasource.getConfigJson().isBlank()) {
-            try {
-                ConnectorConfig config = parseConfig(datasource.getType(), datasource.getConfigJson(),
-                        datasource.getName());
-                if (config instanceof ConnectorConfig.Postgres pgConfig) {
-                    profilePostgresDataset(dataset, pgConfig, now);
-                    profiledReal = true;
-                } else if (config instanceof ConnectorConfig.Csv csvConfig) {
-                    profileCsvDataset(dataset, csvConfig, now);
-                    profiledReal = true;
-                }
-            } catch (Exception e) {
-                log.warn("Real database profiling failed for dataset '{}', falling back to default profiling: {}",
-                        dataset.getName(), e.getMessage());
-            }
-        }
-
-        if (!profiledReal) {
-            profileFallbackDataset(dataset, now);
-        }
-
-        datasetRepository.save(dataset);
+    public enum ProfilerType {
+        NUMERIC,
+        STRING,
+        DATE,
+        BOOLEAN,
+        OTHER
     }
 
-    private void profilePostgresDataset(Dataset dataset, ConnectorConfig.Postgres config, LocalDateTime now)
-            throws Exception {
-        String[] parts = dataset.getName().split("\\.", 2);
-        String schema = (parts.length > 1 && !parts[0].isBlank()) ? parts[0]
-                : (config.schema() != null && !config.schema().isBlank() ? config.schema() : "public");
-        String tableName = parts.length > 1 ? parts[1] : dataset.getName();
+    /**
+     * Executes the 12-stage unified data profiling pipeline.
+     */
+    private void profileDatasetPipeline(Dataset dataset) {
+        LocalDateTime profiledAt = LocalDateTime.now();
+        Datasource datasource = dataset.getDatasource();
 
-        Properties props = new Properties();
-        props.setProperty("user", config.username());
-        props.setProperty("password", config.password());
-        if (config.ssl()) {
-            props.setProperty("ssl", "true");
-            props.setProperty("sslmode", "require");
+        if (datasource == null || datasource.getConfigJson() == null || datasource.getConfigJson().isBlank()) {
+            profileFallbackDataset(dataset, profiledAt);
+            datasetRepository.save(dataset);
+            return;
         }
-        String url = config.jdbcUrl();
 
-        try (Connection conn = DriverManager.getConnection(url, props)) {
-            long totalRows = 0L;
-            try (Statement stmt = conn.createStatement();
-                    ResultSet rs = stmt
-                            .executeQuery("SELECT COUNT(*) FROM \"%s\".\"%s\"".formatted(schema, tableName))) {
-                if (rs.next()) {
-                    totalRows = rs.getLong(1);
+        try {
+            // Stage 1: Dataset Discovery
+            ConnectorConfig config = parseConfig(datasource.getType(), datasource.getConfigJson(),
+                    datasource.getName());
+            DataSourceConnector connector = connectorFactory.createConnector(config);
+            List<DatasetDescriptor> descriptors = stage1DiscoverDatasets(connector);
+            log.info("Stage 1 - Discovered {} descriptors from connector", descriptors.size());
+
+            // Stage 2: Read Dataset into Dataset<Row>
+            org.apache.spark.sql.Dataset<Row> df = stage2ReadDataset(connector, dataset.getName());
+            log.info("Stage 2 - Loaded Dataset<Row> for table '{}'", dataset.getName());
+
+            // Stage 3: Extract Schema Only (StructType -> DatasetColumns)
+            stage3ExtractSchemaOnly(df, dataset);
+            log.info("Stage 3 - Extracted structural schema with {} columns", dataset.getColumns().size());
+
+            // Stage 4-10: Profile Every Column via Single Spark Aggregation Pass
+            TableProfile tableProfile = stage4To10ProfileDatasetOptimized(dataset, df, profiledAt);
+
+            // Stage 11 & 12: Assemble Table Profile & Persist Everything
+            stage11And12PersistEverything(dataset, tableProfile, profiledAt);
+
+        } catch (Exception e) {
+            log.warn("Spark profiling engine failed for dataset '{}', using fallback profiling: {}",
+                    dataset.getName(), e.getMessage(), e);
+            profileFallbackDataset(dataset, profiledAt);
+            datasetRepository.save(dataset);
+        }
+    }
+
+    /**
+     * Stage 1: Dataset Discovery
+     */
+    private List<DatasetDescriptor> stage1DiscoverDatasets(DataSourceConnector connector) {
+        return connector.discoverDatasets();
+    }
+
+    /**
+     * Stage 2: Read Dataset into Dataset<Row>
+     */
+    private org.apache.spark.sql.Dataset<Row> stage2ReadDataset(DataSourceConnector connector, String datasetId) {
+        DataSourceConnector.DataReader reader = connector.createReader(datasetId);
+        return reader.read();
+    }
+
+    private static final java.util.regex.Pattern UUID_PATTERN =
+            java.util.regex.Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
+    /**
+     * Stage 3: Extract Schema Only
+     * Extract structural metadata from StructType into DatasetColumn entities,
+     * detecting specific types like UUID, JSON, INT, BIGINT, DOUBLE, DATE, TIMESTAMP, etc.
+     * No statistics. No profiling. Just schema.
+     */
+    private void stage3ExtractSchemaOnly(org.apache.spark.sql.Dataset<Row> df, Dataset dataset) {
+        StructType schema = df.schema();
+        if (dataset.getColumns() == null) {
+            dataset.setColumns(new ArrayList<>());
+        }
+
+        Map<String, String> refinedTypes = new HashMap<>();
+        try {
+            List<String> stringColNames = new ArrayList<>();
+            for (StructField field : schema.fields()) {
+                if (field.dataType() instanceof StringType || field.dataType() instanceof VarcharType
+                        || field.dataType() instanceof CharType) {
+                    stringColNames.add(field.name());
                 }
             }
-            if (totalRows <= 0)
-                totalRows = 1L;
-            dataset.setRowCount(totalRows);
 
-            for (DatasetColumn col : dataset.getColumns()) {
-                String colName = col.getName();
-                boolean isNumeric = col.getDataType() != null && (col.getDataType().toUpperCase().contains("INT") ||
-                        col.getDataType().toUpperCase().contains("NUM") ||
-                        col.getDataType().toUpperCase().contains("FLOAT") ||
-                        col.getDataType().toUpperCase().contains("DOUBLE") ||
-                        col.getDataType().toUpperCase().contains("DECIMAL") ||
-                        col.getDataType().toUpperCase().contains("REAL") ||
-                        col.getDataType().toUpperCase().contains("SERIAL"));
+            if (!stringColNames.isEmpty()) {
+                Column[] stringCols = stringColNames.stream()
+                        .map(org.apache.spark.sql.functions::col)
+                        .toArray(Column[]::new);
 
-                boolean isComputable = isMinMaxComputable(col.getDataType());
+                List<Row> sampleRows = df.select(stringCols).limit(10).collectAsList();
 
-                String minSql = isComputable
-                        ? "MIN(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END)::text AS min_val".formatted(colName)
-                        : "NULL::text AS min_val";
-
-                String maxSql = isComputable
-                        ? "MAX(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END)::text AS max_val".formatted(colName)
-                        : "NULL::text AS max_val";
-
-                String avgSql = isNumeric
-                        ? "AVG(CASE WHEN \"%1$s\" IS NOT NULL AND LOWER(TRIM(\"%1$s\"::text)) <> 'null' AND TRIM(\"%1$s\"::text) <> '' THEN \"%1$s\" END) AS avg_val".formatted(colName)
-                        : "NULL::numeric AS avg_val";
-
-                String colSql = """
-                        SELECT
-                            COUNT(CASE WHEN "%1$s" IS NULL OR LOWER(TRIM("%1$s"::text)) = 'null' OR TRIM("%1$s"::text) = '' OR LOWER(TRIM("%1$s"::text)) = 'none' OR LOWER(TRIM("%1$s"::text)) = 'n/a' THEN 1 END) AS null_count,
-                            COUNT(DISTINCT CASE WHEN "%1$s" IS NOT NULL AND LOWER(TRIM("%1$s"::text)) <> 'null' AND TRIM("%1$s"::text) <> '' AND LOWER(TRIM("%1$s"::text)) <> 'none' AND LOWER(TRIM("%1$s"::text)) <> 'n/a' THEN "%1$s"::text END) AS distinct_count,
-                            %2$s,
-                            %3$s,
-                            %4$s
-                        FROM "%5$s"."%6$s"
-                        """
-                        .formatted(colName, minSql, maxSql, avgSql, schema, tableName);
-
-                long nullCount = 0L;
-                long distinctCount = 0L;
-                String minVal = null;
-                String maxVal = null;
-                Double avgVal = null;
-
-                try (Statement stmt = conn.createStatement();
-                        ResultSet rs = stmt.executeQuery(colSql)) {
-                    if (rs.next()) {
-                        nullCount = rs.getLong("null_count");
-                        distinctCount = rs.getLong("distinct_count");
-                        minVal = rs.getString("min_val");
-                        maxVal = rs.getString("max_val");
-                        Object avgObj = rs.getObject("avg_val");
-                        if (avgObj != null) {
-                            avgVal = ((Number) avgObj).doubleValue();
+                for (int i = 0; i < stringColNames.size(); i++) {
+                    String name = stringColNames.get(i);
+                    for (Row row : sampleRows) {
+                        if (!row.isNullAt(i)) {
+                            Object rawVal = row.get(i);
+                            if (rawVal != null) {
+                                String val = rawVal.toString().trim();
+                                if (!val.isEmpty()) {
+                                    if (UUID_PATTERN.matcher(val).matches()) {
+                                        refinedTypes.put(name, "UUID");
+                                        break;
+                                    } else if ((val.startsWith("{") && val.endsWith("}"))
+                                            || (val.startsWith("[") && val.endsWith("]"))) {
+                                        refinedTypes.put(name, "JSON");
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
-                } catch (Exception colEx) {
-                    log.warn("Failed to profile column '{}' in Postgres, using default column profile: {}", colName,
-                            colEx.getMessage());
-                    nullCount = col.isNullable() ? 1L : 0L;
-                    distinctCount = 1L;
                 }
+            }
+        } catch (Exception e) {
+            log.debug("Schema sampling for type refinement skipped: {}", e.getMessage());
+        }
 
-                double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
+        for (StructField field : schema.fields()) {
+            String colName = field.name();
+            String detectedType = refinedTypes.getOrDefault(colName, mapSparkTypeToStandard(field.dataType()));
+            boolean nullable = field.nullable();
 
-                saveOrUpdateProfile(col, nullCount, nullPct, distinctCount, minVal, maxVal, avgVal, now);
+            Optional<DatasetColumn> existing = dataset.getColumns().stream()
+                    .filter(c -> c.getName().equalsIgnoreCase(colName))
+                    .findFirst();
+
+            if (existing.isEmpty()) {
+                DatasetColumn col = DatasetColumn.builder()
+                        .dataset(dataset)
+                        .name(colName)
+                        .dataType(detectedType)
+                        .isNullable(nullable)
+                        .isPrimaryKey(colName.toLowerCase().contains("id") || colName.equalsIgnoreCase("id"))
+                        .build();
+                DatasetColumn savedCol = columnRepository.save(col);
+                dataset.getColumns().add(savedCol);
+            } else {
+                DatasetColumn col = existing.get();
+                col.setDataType(detectedType);
+                col.setNullable(nullable);
+                columnRepository.save(col);
             }
         }
+    }
+
+    private static String mapSparkTypeToStandard(DataType sparkType) {
+        if (sparkType instanceof IntegerType || sparkType instanceof ShortType || sparkType instanceof ByteType) {
+            return "INTEGER";
+        } else if (sparkType instanceof LongType) {
+            return "BIGINT";
+        } else if (sparkType instanceof DoubleType || sparkType instanceof FloatType) {
+            return "DOUBLE";
+        } else if (sparkType instanceof DecimalType) {
+            return "DECIMAL";
+        } else if (sparkType instanceof BooleanType) {
+            return "BOOLEAN";
+        } else if (sparkType instanceof DateType) {
+            return "DATE";
+        } else if (sparkType instanceof TimestampType || sparkType instanceof TimestampNTZType) {
+            return "TIMESTAMP";
+        } else {
+            return sparkType.typeName().toUpperCase();
+        }
+    }
+
+    /**
+     * Stage 5: Choose Profiler by Spark DataType
+     */
+    private ProfilerType chooseProfilerBySparkType(DataType sparkType) {
+        if (sparkType instanceof ByteType || sparkType instanceof ShortType ||
+                sparkType instanceof IntegerType || sparkType instanceof LongType ||
+                sparkType instanceof FloatType || sparkType instanceof DoubleType ||
+                sparkType instanceof DecimalType) {
+            return ProfilerType.NUMERIC;
+        } else if (sparkType instanceof StringType || sparkType instanceof VarcharType ||
+                sparkType instanceof CharType) {
+            return ProfilerType.STRING;
+        } else if (sparkType instanceof DateType || sparkType instanceof TimestampType ||
+                sparkType instanceof TimestampNTZType) {
+            return ProfilerType.DATE;
+        } else if (sparkType instanceof BooleanType) {
+            return ProfilerType.BOOLEAN;
+        } else {
+            return ProfilerType.OTHER;
+        }
+    }
+
+    /**
+     * Stages 4-10: Profile Every Column via a Single Spark Aggregation Scan
+     */
+    private TableProfile stage4To10ProfileDatasetOptimized(
+            Dataset dataset, org.apache.spark.sql.Dataset<Row> df, LocalDateTime profiledAt) {
+
+        StructType schema = df.schema();
+        StructField[] fields = schema.fields();
+
+        List<Column> expressions = new ArrayList<>();
+        expressions.add(count(lit(1)).as("__total_row_count"));
+
+        for (StructField field : fields) {
+            String colName = field.name();
+            ProfilerType profilerType = chooseProfilerBySparkType(field.dataType());
+            Column colRef = col(colName);
+
+            switch (profilerType) {
+                case NUMERIC -> {
+                    // Stage 6: Numeric Profiling
+                    expressions.add(count(when(colRef.isNull(), 1)).as(colName + "__null_count"));
+                    expressions.add(countDistinct(colRef).as(colName + "__distinct_count"));
+                    expressions.add(min(colRef).as(colName + "__min"));
+                    expressions.add(max(colRef).as(colName + "__max"));
+                    expressions.add(avg(colRef).as(colName + "__avg"));
+                    expressions.add(percentile_approx(colRef, lit(0.5), lit(10000)).as(colName + "__median"));
+                    expressions.add(variance(colRef).as(colName + "__variance"));
+                    expressions.add(stddev(colRef).as(colName + "__stddev"));
+                    expressions.add(sum(colRef).as(colName + "__sum"));
+                    expressions.add(skewness(colRef).as(colName + "__skewness"));
+                    expressions.add(kurtosis(colRef).as(colName + "__kurtosis"));
+                }
+                case STRING -> {
+                    // Stage 7: String Profiling (row count, null count, blank count, distinct count, min/max/avg length)
+                    expressions.add(count(when(colRef.isNull(), 1)).as(colName + "__null_count"));
+                    expressions.add(count(when(trim(colRef).equalTo(""), 1)).as(colName + "__blank_count"));
+                    expressions.add(countDistinct(colRef).as(colName + "__distinct_count"));
+                    expressions.add(min(length(colRef)).as(colName + "__min_length"));
+                    expressions.add(max(length(colRef)).as(colName + "__max_length"));
+                    expressions.add(avg(length(colRef)).as(colName + "__avg_length"));
+                }
+                case DATE -> {
+                    // Stage 8: Date Profiling
+                    expressions.add(count(when(colRef.isNull(), 1)).as(colName + "__null_count"));
+                    expressions.add(countDistinct(colRef).as(colName + "__distinct_count"));
+                    expressions.add(min(colRef).cast("string").as(colName + "__earliest"));
+                    expressions.add(max(colRef).cast("string").as(colName + "__latest"));
+                }
+                case BOOLEAN -> {
+                    // Stage 9: Boolean Profiling
+                    expressions.add(count(when(colRef.equalTo(true), 1)).as(colName + "__true_count"));
+                    expressions.add(count(when(colRef.equalTo(false), 1)).as(colName + "__false_count"));
+                    expressions.add(count(when(colRef.isNull(), 1)).as(colName + "__null_count"));
+                }
+                case OTHER -> {
+                    expressions.add(count(when(colRef.isNull(), 1)).as(colName + "__null_count"));
+                    expressions.add(countDistinct(colRef).as(colName + "__distinct_count"));
+                }
+            }
+        }
+
+        // Stage 10: Single Spark Aggregation Pass (One optimized physical plan, one scan)
+        Column firstExpr = expressions.get(0);
+        Column[] remainingExprs = expressions.subList(1, expressions.size()).toArray(new Column[0]);
+        Row aggResult = df.agg(firstExpr, remainingExprs).first();
+
+        // Stage 11: Assemble Table Profile
+        long totalRows = aggResult.getAs("__total_row_count") != null
+                ? ((Number) aggResult.getAs("__total_row_count")).longValue()
+                : 0L;
+
+        List<ColumnProfile> profiles = new ArrayList<>();
+
+        for (DatasetColumn colEntity : dataset.getColumns()) {
+            String colName = colEntity.getName();
+            long nullCount = getLongValue(aggResult, colName + "__null_count");
+            double nullPct = totalRows > 0 ? Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0 : 0.0;
+            long distinctCount = getLongValue(aggResult, colName + "__distinct_count");
+
+            boolean isComputable = isMinMaxComputable(colEntity.getDataType());
+            String minVal = isComputable ? getStringValue(aggResult, colName + "__min", colName + "__earliest") : null;
+            String maxVal = isComputable ? getStringValue(aggResult, colName + "__max", colName + "__latest") : null;
+            Double avgVal = isComputable ? getDoubleValue(aggResult, colName + "__avg") : null;
+
+            ColumnProfile cp = saveOrUpdateProfile(colEntity, nullCount, nullPct, distinctCount, minVal, maxVal, avgVal,
+                    profiledAt);
+            profiles.add(cp);
+        }
+
+        return TableProfile.builder()
+                .datasetId(dataset.getId())
+                .tableName(dataset.getName())
+                .rowCount(totalRows)
+                .columnProfiles(profiles)
+                .profiledAt(profiledAt)
+                .build();
+    }
+
+    /**
+     * Stage 11 & 12: Persist Everything
+     */
+    private void stage11And12PersistEverything(Dataset dataset, TableProfile tableProfile, LocalDateTime profiledAt) {
+        dataset.setRowCount(tableProfile.getRowCount());
+        dataset.setLastValidated(profiledAt);
+        datasetRepository.save(dataset);
+        log.info("Stage 12 - Persisted dataset '{}' row count {} and {} column profiles",
+                dataset.getName(), tableProfile.getRowCount(), tableProfile.getColumnProfiles().size());
+    }
+
+    private long getLongValue(Row row, String fieldName) {
+        try {
+            Object obj = row.getAs(fieldName);
+            return obj instanceof Number n ? n.longValue() : 0L;
+        } catch (IllegalArgumentException e) {
+            return 0L;
+        }
+    }
+
+    private Double getDoubleValue(Row row, String fieldName) {
+        try {
+            Object obj = row.getAs(fieldName);
+            return obj instanceof Number n ? n.doubleValue() : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private String getStringValue(Row row, String... fieldNames) {
+        for (String f : fieldNames) {
+            try {
+                Object obj = row.getAs(f);
+                if (obj != null) {
+                    return obj.toString();
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return null;
     }
 
     private ColumnProfile saveOrUpdateProfile(DatasetColumn col, long nullCount, double nullPct,
@@ -433,94 +678,12 @@ public class DatasetServiceImpl implements DatasetService {
         return profileRepository.save(profile);
     }
 
-    private void profileCsvDataset(Dataset dataset, ConnectorConfig.Csv config, LocalDateTime now) throws Exception {
-        java.nio.file.Path path = java.nio.file.Paths.get(config.filePath()).toAbsolutePath().normalize();
-        if (!java.nio.file.Files.exists(path)) {
-            profileFallbackDataset(dataset, now);
-            return;
-        }
-
-        List<String> headers = new ArrayList<>();
-        List<String[]> dataRows = new ArrayList<>();
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(java.nio.file.Files.newInputStream(path),
-                java.nio.charset.Charset.forName(config.encoding())))) {
-            String headerLine = reader.readLine();
-            if (headerLine != null) {
-                for (String h : headerLine.split(String.valueOf(config.delimiter()))) {
-                    headers.add(h.trim().replace("\"", ""));
-                }
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    dataRows.add(line.split(String.valueOf(config.delimiter())));
-                }
-            }
-        }
-
-        long totalRows = Math.max(1L, dataRows.size());
-        dataset.setRowCount(totalRows);
-
-        for (DatasetColumn col : dataset.getColumns()) {
-            int colIdx = headers.indexOf(col.getName());
-            long nullCount = 0L;
-            java.util.Set<String> distinctSet = new java.util.HashSet<>();
-            String minVal = null;
-            String maxVal = null;
-            Double minNum = null;
-            Double maxNum = null;
-            double sum = 0;
-            long numCount = 0;
-            boolean isComputable = isMinMaxComputable(col.getDataType());
-
-            for (String[] row : dataRows) {
-                String val = (colIdx >= 0 && colIdx < row.length) ? row[colIdx].trim().replace("\"", "") : null;
-                if (isNullValue(val)) {
-                    nullCount++;
-                } else {
-                    distinctSet.add(val);
-                    if (isComputable) {
-                        try {
-                            double d = Double.parseDouble(val);
-                            sum += d;
-                            numCount++;
-                            if (minNum == null || d < minNum) {
-                                minNum = d;
-                            }
-                            if (maxNum == null || d > maxNum) {
-                                maxNum = d;
-                            }
-                        } catch (NumberFormatException ignored) {
-                            if (minVal == null || val.compareTo(minVal) < 0)
-                                minVal = val;
-                            if (maxVal == null || val.compareTo(maxVal) > 0)
-                                maxVal = val;
-                        }
-                    }
-                }
-            }
-
-            if (isComputable) {
-                if (numCount > 0) {
-                    if (minNum != null) {
-                        minVal = (minNum % 1 == 0) ? String.valueOf(minNum.longValue()) : String.valueOf(minNum);
-                    }
-                    if (maxNum != null) {
-                        maxVal = (maxNum % 1 == 0) ? String.valueOf(maxNum.longValue()) : String.valueOf(maxNum);
-                    }
-                }
-            } else {
-                minVal = null;
-                maxVal = null;
-            }
-
-            double nullPct = Math.round(((double) nullCount / totalRows) * 10000.0) / 100.0;
-            Double avgVal = numCount > 0 ? (sum / numCount) : null;
-
-            saveOrUpdateProfile(col, nullCount, nullPct, (long) distinctSet.size(), minVal, maxVal, avgVal, now);
-        }
-    }
-
     private void profileFallbackDataset(Dataset dataset, LocalDateTime now) {
+        if (dataset.getColumns() == null || dataset.getColumns().isEmpty()) {
+            syncColumnsFromConnector(dataset);
+        }
+        dataset.setLastValidated(now);
+
         for (DatasetColumn col : dataset.getColumns()) {
             long totalRows = dataset.getRowCount() != null && dataset.getRowCount() > 0 ? dataset.getRowCount() : 100L;
             long nullCount = col.isNullable() ? (long) (Math.random() * (totalRows * 0.05)) : 0L;
@@ -554,7 +717,7 @@ public class DatasetServiceImpl implements DatasetService {
             DatasetMetadata metadata = connector.getMetadata(dataset.getName());
 
             if (metadata != null && metadata.columns() != null) {
-                for (ColumnMetadata colMeta : metadata.columns()) {
+                for (com.regisx001.dQul.connector.api.ColumnMetadata colMeta : metadata.columns()) {
                     Optional<DatasetColumn> existing = columnRepository.findByDatasetIdAndName(dataset.getId(),
                             colMeta.name());
                     if (existing.isEmpty()) {

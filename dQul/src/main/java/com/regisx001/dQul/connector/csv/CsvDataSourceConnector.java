@@ -193,6 +193,9 @@ public class CsvDataSourceConnector implements DataSourceConnector {
         return fields.toArray(String[]::new);
     }
 
+    private static final java.util.regex.Pattern UUID_PATTERN =
+            java.util.regex.Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
     private static DataType inferType(String[] fields, int index) {
         if (index >= fields.length) {
             return DataType.STRING;
@@ -200,13 +203,30 @@ public class CsvDataSourceConnector implements DataSourceConnector {
         String value = fields[index].strip();
 
         if (value.isEmpty() || value.equalsIgnoreCase("null")
-                || value.equalsIgnoreCase("\\n")) {
+                || value.equalsIgnoreCase("\\n") || value.equalsIgnoreCase("none")
+                || value.equalsIgnoreCase("n/a")) {
             return DataType.STRING;
         }
 
+        if (UUID_PATTERN.matcher(value).matches()) {
+            return DataType.UUID;
+        }
+
+        if ((value.startsWith("{") && value.endsWith("}")) || (value.startsWith("[") && value.endsWith("]"))) {
+            return DataType.JSON;
+        }
+
+        if (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false")) {
+            return DataType.BOOLEAN;
+        }
+
+        if (value.matches("^\\d{4}-\\d{2}-\\d{2}.*")) {
+            return value.contains(":") || value.contains("T") ? DataType.TIMESTAMP : DataType.DATE;
+        }
+
         try {
-            Long.parseLong(value);
-            if (value.length() > 9) {
+            long l = Long.parseLong(value);
+            if (l > Integer.MAX_VALUE || l < Integer.MIN_VALUE || value.length() > 9) {
                 return DataType.LONG;
             }
             return DataType.INTEGER;

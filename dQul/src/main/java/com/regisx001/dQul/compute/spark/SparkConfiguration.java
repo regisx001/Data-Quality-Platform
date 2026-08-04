@@ -47,6 +47,7 @@ public class SparkConfiguration {
                 .config("spark.sql.ansi.enabled", String.valueOf(sql.isAnsiEnabled()))
                 .config("spark.sql.caseSensitive", String.valueOf(sql.isCaseSensitive()))
                 .config("spark.sql.session.timeZone", sql.getSessionTimezone())
+                .config("spark.sql.datetime.java8API.enabled", "true")
                 .config("spark.sql.broadcastTimeout", String.valueOf(sql.getBroadcastTimeout()));
 
         // --- Extra configuration ---
