@@ -8,6 +8,7 @@
 	import Loader2 from "@lucide/svelte/icons/loader-2";
 	import Trash2 from "@lucide/svelte/icons/trash-2";
 	import DatasourceDataTable from "$lib/components/dashboard/datasource-data-table.svelte";
+	import ErrorAlert from "$lib/components/ui/error-alert.svelte";
 	import type { PageData, ActionData } from "./$types";
 	import type { Datasource } from "$lib/server/api";
 
@@ -64,9 +65,7 @@
 	{/if}
 
 	{#if form?.error}
-		<div class="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
-			{form.error}
-		</div>
+		<ErrorAlert error={form.error} title="Datasource Operation Failed" />
 	{/if}
 
 	<!-- Custom Composable Datasource DataTable (matching dashboard-01) -->

@@ -32,7 +32,7 @@ public class MinioStorageService {
 
     public FileUploadResult uploadCsvFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("Cannot upload empty or null file");
+            throw new com.regisx001.dQul.storage.exception.EmptyFileException();
         }
 
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "dataset.csv";
@@ -51,7 +51,7 @@ public class MinioStorageService {
             }
         } catch (Exception e) {
             log.error("Failed to save local file copy: {}", e.getMessage(), e);
-            throw new RuntimeException("Could not save uploaded CSV file locally: " + e.getMessage(), e);
+            throw new com.regisx001.dQul.storage.exception.StorageOperationException("Could not save uploaded CSV file locally: " + e.getMessage(), e);
         }
 
         // 2. Upload to MinIO object storage

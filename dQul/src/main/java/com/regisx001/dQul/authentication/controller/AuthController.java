@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.regisx001.dQul.authentication.dto.AuthenticationRequest;
 import com.regisx001.dQul.authentication.dto.AuthenticationResponse;
 import com.regisx001.dQul.authentication.dto.RegisterRequest;
-import com.regisx001.dQul.common.responses.ApiErrorResponse;
-import com.regisx001.dQul.common.domain.User;
+import com.regisx001.dQul.authentication.exception.InvalidTokenException;
 import com.regisx001.dQul.authentication.service.AuthenticationService;
+import com.regisx001.dQul.common.domain.User;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -27,54 +27,30 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        try {
-            AuthenticationResponse response = authenticationService.register(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request) {
+        AuthenticationResponse response = authenticationService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> authenticate(@RequestBody AuthenticationRequest request) {
-        try {
-            AuthenticationResponse response = authenticationService.authenticate(request);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.UNAUTHORIZED.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
+        AuthenticationResponse response = authenticationService.authenticate(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<?> verifyToken(@RequestBody String token) {
+    public ResponseEntity<Void> verifyToken(@RequestBody String token) {
         boolean valid = authenticationService.verifyToken(token);
         if (valid) {
             return ResponseEntity.ok().build();
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiErrorResponse.builder()
-                        .status(HttpStatus.UNAUTHORIZED.value())
-                        .message("Token is invalid or expired")
-                        .build());
+        throw new InvalidTokenException();
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> currentUser(@AuthenticationPrincipal User user) {
+    public ResponseEntity<AuthenticationResponse> currentUser(@AuthenticationPrincipal User user) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.UNAUTHORIZED.value())
-                            .message("Not authenticated")
-                            .build());
+            throw new InvalidTokenException("Not authenticated");
         }
 
         AuthenticationResponse response = AuthenticationResponse.builder()

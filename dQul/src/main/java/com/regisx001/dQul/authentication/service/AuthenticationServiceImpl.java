@@ -61,17 +61,21 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         String login = request.getLogin();
 
-        // Determine whether the login is a username or email
-        User user = login.contains("@")
-                ? userService.getUserByEmail(login)
-                : userService.getUserByUsername(login);
+        User user;
+        try {
+            user = login.contains("@")
+                    ? userService.getUserByEmail(login)
+                    : userService.getUserByUsername(login);
+        } catch (Exception e) {
+            throw new com.regisx001.dQul.authentication.exception.InvalidCredentialsException();
+        }
 
         if (!user.isActive()) {
-            throw new IllegalStateException("User account is deactivated");
+            throw new com.regisx001.dQul.authentication.exception.UserDeactivatedException();
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new com.regisx001.dQul.authentication.exception.InvalidCredentialsException();
         }
 
         // Record login timestamp

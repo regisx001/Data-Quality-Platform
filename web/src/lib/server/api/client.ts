@@ -3,16 +3,47 @@ import { env } from "$env/dynamic/private";
 export const BACKEND_API_URL = env.BACKEND_API_URL || "http://localhost:7000";
 
 export interface ApiError {
+    timestamp?: string;
     status: number;
+    error?: string;
+    code?: string;
     message: string;
+    path?: string;
+    module?: string;
+    details?: any;
 }
 
 export type ApiResult<T> =
     | { ok: true; data: T }
-    | { ok: false; status: number; error: string };
+    | { ok: false; status: number; error: ApiError };
+
+export function parseApiError(resStatus: number, path: string, body: any, fallbackMessage?: string): ApiError {
+    if (typeof body === "object" && body !== null) {
+        return {
+            timestamp: body.timestamp || new Date().toISOString(),
+            status: body.status || resStatus,
+            error: body.error || "Error",
+            code: body.code || (resStatus === 404 ? "NOT_FOUND" : resStatus === 401 ? "UNAUTHORIZED" : "ERROR"),
+            message: body.message || fallbackMessage || `Request failed with status ${resStatus}`,
+            path: body.path || path,
+            module: body.module || "SYSTEM",
+            details: body.details || null
+        };
+    }
+    return {
+        timestamp: new Date().toISOString(),
+        status: resStatus,
+        error: "Error",
+        code: "ERROR",
+        message: typeof body === "string" && body.trim() ? body : (fallbackMessage || `Request failed with status ${resStatus}`),
+        path,
+        module: "SYSTEM",
+        details: null
+    };
+}
 
 /**
- * Generic fetch wrapper with JSON parsing and error handling.
+ * Generic fetch wrapper with JSON parsing and structured error handling.
  */
 export async function apiFetch<T>(
     path: string,
@@ -41,7 +72,7 @@ export async function apiFetch<T>(
             return {
                 ok: false,
                 status: res.status,
-                error: body.message || `Request failed with status ${res.status}`,
+                error: parseApiError(res.status, path, body),
             };
         }
 
@@ -50,7 +81,16 @@ export async function apiFetch<T>(
         return {
             ok: false,
             status: 500,
-            error: err.message || "Network error",
+            error: {
+                timestamp: new Date().toISOString(),
+                status: 500,
+                error: "Network Error",
+                code: "NETWORK_ERROR",
+                message: err.message || "Failed to communicate with backend server",
+                path,
+                module: "NETWORK",
+                details: null
+            },
         };
     }
 }

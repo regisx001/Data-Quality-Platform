@@ -110,7 +110,8 @@ export async function uploadCsvFile(
     formData: FormData
 ): Promise<ApiResult<{ filePath: string; objectName: string; bucket: string; fileName: string; fileSize: number; storedInMinio: boolean }>> {
     try {
-        const res = await apiFetchAuthRaw("/api/v1/datasources/upload-csv", token, {
+        const path = "/api/v1/datasources/upload-csv";
+        const res = await apiFetchAuthRaw(path, token, {
             method: "POST",
             body: formData,
         });
@@ -119,7 +120,7 @@ export async function uploadCsvFile(
             return {
                 ok: false,
                 status: res.status,
-                error: body.message || `Upload failed with status ${res.status}`,
+                error: parseApiError(res.status, path, body, "CSV Upload failed"),
             };
         }
         return { ok: true, data: body };
@@ -127,7 +128,15 @@ export async function uploadCsvFile(
         return {
             ok: false,
             status: 500,
-            error: err.message || "Network error during CSV file upload",
+            error: {
+                timestamp: new Date().toISOString(),
+                status: 500,
+                error: "Network Error",
+                code: "NETWORK_ERROR",
+                message: err.message || "Network error during CSV file upload",
+                path: "/api/v1/datasources/upload-csv",
+                module: "STORAGE"
+            },
         };
     }
 }

@@ -3,7 +3,6 @@ package com.regisx001.dQul.common.controller;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,11 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.regisx001.dQul.common.responses.ApiErrorResponse;
 import com.regisx001.dQul.common.domain.User;
 import com.regisx001.dQul.common.service.UserService;
-
-import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -36,109 +32,42 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable UUID id) {
-        try {
-            User user = userService.getUserById(id);
-            return ResponseEntity.ok(user);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<User> getUserById(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @GetMapping("/by-username/{username}")
-    public ResponseEntity<?> getUserByUsername(@PathVariable String username) {
-        try {
-            User user = userService.getUserByUsername(username);
-            return ResponseEntity.ok(user);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
+        return ResponseEntity.ok(userService.getUserByUsername(username));
     }
 
     @GetMapping("/by-email/{email}")
-    public ResponseEntity<?> getUserByEmail(@PathVariable String email) {
-        try {
-            User user = userService.getUserByEmail(email);
-            return ResponseEntity.ok(user);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+        return ResponseEntity.ok(userService.getUserByEmail(email));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable UUID id,
+    public ResponseEntity<User> updateUser(@PathVariable UUID id,
             @RequestBody UpdateUserRequest request) {
-        try {
-            User updated = userService.updateUser(id,
-                    request.email(), request.fullName(), request.role());
-            return ResponseEntity.ok(updated);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+        User updated = userService.updateUser(id,
+                request.email(), request.fullName(), request.role());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable UUID id) {
-        try {
-            userService.deleteUser(id);
-            return ResponseEntity.noContent().build();
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/activate")
-    public ResponseEntity<?> activateUser(@PathVariable UUID id) {
-        try {
-            User user = userService.activateUser(id);
-            return ResponseEntity.ok(user);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<User> activateUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.activateUser(id));
     }
 
     @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<?> deactivateUser(@PathVariable UUID id) {
-        try {
-            User user = userService.deactivateUser(id);
-            return ResponseEntity.ok(user);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<User> deactivateUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.deactivateUser(id));
     }
 
     // ── Inner DTO ────────────────────────────────────────────────────────

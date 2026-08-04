@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.regisx001.dQul.common.domain.User;
+import com.regisx001.dQul.common.exception.UserAlreadyExistsException;
+import com.regisx001.dQul.common.exception.UserNotFoundException;
 import com.regisx001.dQul.common.repository.UserRepository;
 import com.regisx001.dQul.common.service.UserService;
-
-import jakarta.persistence.EntityNotFoundException;
 
 @Service
 @Transactional
@@ -29,11 +29,11 @@ public class UserServiceImpl implements UserService {
     public User createUser(String username, String email, String encodedPassword,
             String fullName, String role) {
         if (userRepository.existsByUsername(username)) {
-            throw new IllegalArgumentException(
+            throw new UserAlreadyExistsException(
                     "Username '" + username + "' is already taken");
         }
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException(
+            throw new UserAlreadyExistsException(
                     "Email '" + email + "' is already in use");
         }
 
@@ -54,24 +54,21 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public User getUserById(UUID id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "User not found with id: " + id));
+                .orElseThrow(() -> new UserNotFoundException("id", id));
     }
 
     @Override
     @Transactional(readOnly = true)
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "User not found with username: " + username));
+                .orElseThrow(() -> new UserNotFoundException("username", username));
     }
 
     @Override
     @Transactional(readOnly = true)
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "User not found with email: " + email));
+                .orElseThrow(() -> new UserNotFoundException("email", email));
     }
 
     @Override
@@ -86,7 +83,7 @@ public class UserServiceImpl implements UserService {
 
         if (email != null && !email.equals(user.getEmail())) {
             if (userRepository.existsByEmail(email)) {
-                throw new IllegalArgumentException(
+                throw new UserAlreadyExistsException(
                         "Email '" + email + "' is already in use");
             }
             user.setEmail(email);
@@ -104,7 +101,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteUser(UUID id) {
         if (!userRepository.existsById(id)) {
-            throw new EntityNotFoundException("User not found with id: " + id);
+            throw new UserNotFoundException("id", id);
         }
         userRepository.deleteById(id);
     }

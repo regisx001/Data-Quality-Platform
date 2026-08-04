@@ -6,6 +6,7 @@
 	import ShieldCheck from "@lucide/svelte/icons/shield-check";
 	import AlertCircle from "@lucide/svelte/icons/alert-circle";
 	import Loader2 from "@lucide/svelte/icons/loader-2";
+	import ErrorAlert from "$lib/components/ui/error-alert.svelte";
 	import { enhance } from "$app/forms";
 	import type { HTMLAttributes } from "svelte/elements";
 
@@ -14,7 +15,7 @@
 		class: className,
 		...restProps
 	}: HTMLAttributes<HTMLDivElement> & {
-		form?: { error?: string; username?: string; email?: string; fullName?: string } | null;
+		form?: { error?: any; username?: string; email?: string; fullName?: string } | null;
 	} = $props();
 
 	let username = $state("");
@@ -70,10 +71,7 @@
 					</div>
 
 					{#if form?.error}
-						<div class="flex items-center gap-2.5 p-3.5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl">
-							<AlertCircle class="size-4 shrink-0" />
-							<span>{form.error}</span>
-						</div>
+						<ErrorAlert error={form.error} title="Registration Failed" dismissable={false} />
 					{/if}
 
 					<!-- Username & Full Name Row -->

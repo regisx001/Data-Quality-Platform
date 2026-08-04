@@ -22,12 +22,18 @@ import com.regisx001.dQul.dataset.repository.DatasetRepository;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.repository.DatasourceRepository;
-import com.regisx001.dQul.dataset.service.DatasetService;
 import com.regisx001.dQul.storage.minio.MinioStorageService;
+
 import jakarta.persistence.EntityNotFoundException;
+
+import com.regisx001.dQul.dataset.service.DatasetService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+
+import com.regisx001.dQul.datasource.exception.DatasourceAlreadyExistsException;
+import com.regisx001.dQul.datasource.exception.DatasourceNotFoundException;
+import com.regisx001.dQul.datasource.exception.InvalidDatasourceConfigException;
 
 @Service
 @Transactional
@@ -68,8 +74,7 @@ public class DatasourceServiceImpl implements DatasourceService {
     public Datasource createDatasource(String name, String type, String description,
             String owner, String configJson) {
         if (datasourceRepository.existsByName(name)) {
-            throw new IllegalArgumentException(
-                    "Datasource with name '" + name + "' already exists");
+            throw new DatasourceAlreadyExistsException(name);
         }
         validateSupportedType(type);
 
@@ -110,16 +115,14 @@ public class DatasourceServiceImpl implements DatasourceService {
     @Transactional(readOnly = true)
     public Datasource getDatasourceById(UUID id) {
         return datasourceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Datasource not found with id: " + id));
+                .orElseThrow(() -> new DatasourceNotFoundException("id", id));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Datasource getDatasourceByName(String name) {
         return datasourceRepository.findByName(name)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Datasource not found with name: " + name));
+                .orElseThrow(() -> new DatasourceNotFoundException("name", name));
     }
 
     @Override
@@ -135,8 +138,7 @@ public class DatasourceServiceImpl implements DatasourceService {
 
         if (name != null && !name.equals(datasource.getName())) {
             if (datasourceRepository.existsByName(name)) {
-                throw new IllegalArgumentException(
-                        "Datasource with name '" + name + "' already exists");
+                throw new DatasourceAlreadyExistsException(name);
             }
             datasource.setName(name);
         }

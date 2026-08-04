@@ -15,6 +15,7 @@
 	import Calendar from "@lucide/svelte/icons/calendar";
 	import Trash2 from "@lucide/svelte/icons/trash-2";
 	import * as Dialog from "$lib/components/ui/dialog/index.js";
+	import ErrorAlert from "$lib/components/ui/error-alert.svelte";
 	import type { PageData, ActionData } from "./$types";
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -177,9 +178,7 @@
 	{/if}
 
 	{#if form?.error}
-		<div class="p-3.5 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-xl">
-			{form.error}
-		</div>
+		<ErrorAlert error={form.error} title="Dataset Action Failed" />
 	{/if}
 
 	<!-- Tabs: Schema & Stats | Data Preview | Quality Rules -->

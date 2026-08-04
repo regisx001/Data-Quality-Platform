@@ -18,18 +18,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.regisx001.dQul.common.responses.ApiErrorResponse;
 import com.regisx001.dQul.connector.ConnectorConfigSchema;
 import com.regisx001.dQul.connector.ConnectorConfigSchemaService;
 import com.regisx001.dQul.connector.api.ConnectionTestResult;
 import com.regisx001.dQul.connector.api.DatasetDescriptor;
+import com.regisx001.dQul.connector.exception.ConnectorNotFoundException;
 import com.regisx001.dQul.dataset.domain.Dataset;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.datasource.domain.DatasourceStatus;
 import com.regisx001.dQul.datasource.service.DatasourceService;
 import com.regisx001.dQul.storage.minio.MinioStorageService;
-
-import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping("/api/v1/datasources")
@@ -50,44 +48,22 @@ public class DatasourceController {
     // ── CSV File Upload (MinIO) ───────────────────────────────────────────
 
     @PostMapping(value = "/upload-csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadCsvFile(@RequestParam("file") MultipartFile file) {
-        try {
-            MinioStorageService.FileUploadResult result = minioStorageService.uploadCsvFile(file);
-            return ResponseEntity.ok(result);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                            .message("Failed to upload CSV file: " + e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<MinioStorageService.FileUploadResult> uploadCsvFile(@RequestParam("file") MultipartFile file) {
+        MinioStorageService.FileUploadResult result = minioStorageService.uploadCsvFile(file);
+        return ResponseEntity.ok(result);
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────────
 
     @PostMapping
-    public ResponseEntity<?> createDatasource(@RequestBody CreateDatasourceRequest request) {
-        try {
-            Datasource datasource = datasourceService.createDatasource(
-                    request.name(),
-                    request.type(),
-                    request.description(),
-                    request.owner(),
-                    request.configJson());
-            return ResponseEntity.status(HttpStatus.CREATED).body(datasource);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Datasource> createDatasource(@RequestBody CreateDatasourceRequest request) {
+        Datasource datasource = datasourceService.createDatasource(
+                request.name(),
+                request.type(),
+                request.description(),
+                request.owner(),
+                request.configJson());
+        return ResponseEntity.status(HttpStatus.CREATED).body(datasource);
     }
 
     @GetMapping
@@ -96,68 +72,30 @@ public class DatasourceController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getDatasourceById(@PathVariable UUID id) {
-        try {
-            Datasource datasource = datasourceService.getDatasourceById(id);
-            return ResponseEntity.ok(datasource);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Datasource> getDatasourceById(@PathVariable UUID id) {
+        Datasource datasource = datasourceService.getDatasourceById(id);
+        return ResponseEntity.ok(datasource);
     }
 
     @GetMapping("/by-name/{name}")
-    public ResponseEntity<?> getDatasourceByName(@PathVariable String name) {
-        try {
-            Datasource datasource = datasourceService.getDatasourceByName(name);
-            return ResponseEntity.ok(datasource);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Datasource> getDatasourceByName(@PathVariable String name) {
+        Datasource datasource = datasourceService.getDatasourceByName(name);
+        return ResponseEntity.ok(datasource);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateDatasource(@PathVariable UUID id,
+    public ResponseEntity<Datasource> updateDatasource(@PathVariable UUID id,
             @RequestBody UpdateDatasourceRequest request) {
-        try {
-            Datasource updated = datasourceService.updateDatasource(
-                    id, request.name(), request.type(),
-                    request.description(), request.status());
-            return ResponseEntity.ok(updated);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+        Datasource updated = datasourceService.updateDatasource(
+                id, request.name(), request.type(),
+                request.description(), request.status());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteDatasource(@PathVariable UUID id) {
-        try {
-            datasourceService.deleteDatasource(id);
-            return ResponseEntity.noContent().build();
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Void> deleteDatasource(@PathVariable UUID id) {
+        datasourceService.deleteDatasource(id);
+        return ResponseEntity.noContent().build();
     }
 
     // ── Queries ───────────────────────────────────────────────────────────
@@ -179,45 +117,21 @@ public class DatasourceController {
     // ── Status management ────────────────────────────────────────────────
 
     @PatchMapping("/{id}/activate")
-    public ResponseEntity<?> activateDatasource(@PathVariable UUID id) {
-        try {
-            Datasource datasource = datasourceService.activateDatasource(id);
-            return ResponseEntity.ok(datasource);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Datasource> activateDatasource(@PathVariable UUID id) {
+        Datasource datasource = datasourceService.activateDatasource(id);
+        return ResponseEntity.ok(datasource);
     }
 
     @PatchMapping("/{id}/disable")
-    public ResponseEntity<?> disableDatasource(@PathVariable UUID id) {
-        try {
-            Datasource datasource = datasourceService.disableDatasource(id);
-            return ResponseEntity.ok(datasource);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Datasource> disableDatasource(@PathVariable UUID id) {
+        Datasource datasource = datasourceService.disableDatasource(id);
+        return ResponseEntity.ok(datasource);
     }
 
     @PatchMapping("/{id}/archive")
-    public ResponseEntity<?> archiveDatasource(@PathVariable UUID id) {
-        try {
-            Datasource datasource = datasourceService.archiveDatasource(id);
-            return ResponseEntity.ok(datasource);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Datasource> archiveDatasource(@PathVariable UUID id) {
+        Datasource datasource = datasourceService.archiveDatasource(id);
+        return ResponseEntity.ok(datasource);
     }
 
     // ── Configuration Schemas ────────────────────────────────────────────
@@ -228,14 +142,10 @@ public class DatasourceController {
     }
 
     @GetMapping("/{type}/config-schema")
-    public ResponseEntity<?> getConfigSchemaByType(@PathVariable String type) {
+    public ResponseEntity<ConnectorConfigSchema> getConfigSchemaByType(@PathVariable String type) {
         ConnectorConfigSchema schema = configSchemaService.getSchema(type);
         if (schema == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message("No config schema found for type: " + type)
-                            .build());
+            throw new ConnectorNotFoundException(type);
         }
         return ResponseEntity.ok(schema);
     }
@@ -243,104 +153,45 @@ public class DatasourceController {
     // ── Configuration ────────────────────────────────────────────────────
 
     @PutMapping("/{id}/config")
-    public ResponseEntity<?> saveConfiguration(
+    public ResponseEntity<Datasource> saveConfiguration(
             @PathVariable UUID id,
             @RequestBody SaveConfigRequest request) {
-        try {
-            Datasource datasource = datasourceService.saveConfiguration(
-                    id, request.configJson());
-            return ResponseEntity.ok(datasource);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+        Datasource datasource = datasourceService.saveConfiguration(
+                id, request.configJson());
+        return ResponseEntity.ok(datasource);
     }
 
     @GetMapping("/{id}/config")
-    public ResponseEntity<?> getConfiguration(@PathVariable UUID id) {
-        try {
-            String config = datasourceService.getConfiguration(id);
-            if (config == null) {
-                return ResponseEntity.noContent().build();
-            }
-            return ResponseEntity.ok(
-                    new SaveConfigRequest(config));
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
+    public ResponseEntity<SaveConfigRequest> getConfiguration(@PathVariable UUID id) {
+        String config = datasourceService.getConfiguration(id);
+        if (config == null) {
+            return ResponseEntity.noContent().build();
         }
+        return ResponseEntity.ok(new SaveConfigRequest(config));
     }
 
     // ── Connection Testing ──────────────────────────────────────────────
 
     @PostMapping("/{id}/test-connection")
-    public ResponseEntity<?> testConnection(@PathVariable UUID id) {
-        try {
-            ConnectionTestResult result = datasourceService.testConnection(id);
-            return ResponseEntity.ok(result);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<ConnectionTestResult> testConnection(@PathVariable UUID id) {
+        ConnectionTestResult result = datasourceService.testConnection(id);
+        return ResponseEntity.ok(result);
     }
 
     // ── Dataset Discovery & Import ───────────────────────────────────────
 
     @GetMapping("/{id}/discover-datasets")
-    public ResponseEntity<?> discoverDatasets(@PathVariable UUID id) {
-        try {
-            List<DatasetDescriptor> datasets = datasourceService.discoverDatasets(id);
-            return ResponseEntity.ok(datasets);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                            .message("Failed to discover datasets: " + e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<List<DatasetDescriptor>> discoverDatasets(@PathVariable UUID id) {
+        List<DatasetDescriptor> datasets = datasourceService.discoverDatasets(id);
+        return ResponseEntity.ok(datasets);
     }
 
     @PostMapping("/{id}/import-datasets")
-    public ResponseEntity<?> importDatasets(
+    public ResponseEntity<List<Dataset>> importDatasets(
             @PathVariable UUID id,
             @RequestBody ImportDatasetsRequest request) {
-        try {
-            List<Dataset> imported = datasourceService.importDatasets(id, request.datasetIds());
-            return ResponseEntity.ok(imported);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiErrorResponse.builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build());
-        }
+        List<Dataset> imported = datasourceService.importDatasets(id, request.datasetIds());
+        return ResponseEntity.ok(imported);
     }
 
     // ── Inner DTOs ───────────────────────────────────────────────────────

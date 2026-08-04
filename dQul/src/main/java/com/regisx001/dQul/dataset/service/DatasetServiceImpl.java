@@ -803,6 +803,6 @@ public class DatasetServiceImpl implements DatasetService {
     private Dataset resolveDataset(UUID id) {
         return datasetRepository.findById(id)
                 .or(() -> datasetRepository.findByName(id.toString()))
-                .orElseThrow(() -> new EntityNotFoundException("Dataset not found with id: " + id));
+                .orElseThrow(() -> new com.regisx001.dQul.dataset.exception.DatasetNotFoundException("id", id));
     }
 }
