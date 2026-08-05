@@ -63,7 +63,7 @@ Quick manual check from inside the Kafka container:
 
 ```bash
 docker exec -it dqul-kafka /opt/kafka/bin/kafka-console-producer.sh \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server localhost:9093 \
   --topic platform-logs-topic \
   --property "parse.key=true" \
   --property "key.separator=:"
@@ -96,7 +96,7 @@ All configuration is env-var driven with sensible defaults (see `application.yam
 | `DQUL_LOGS_DATABASE_URL` | `jdbc:postgresql://localhost:3452/dqul_logs` | PostgreSQL JDBC URL |
 | `DQUL_LOGS_DATABASE_USERNAME` | `postgres` | DB user |
 | `DQUL_LOGS_DATABASE_PASSWORD` | `postgres` | DB password |
-| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker address |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9093` | Kafka broker address (host listener) |
 | `SERVER_PORT` | `7001` | REST API port |
 | `LOGS_PURGE_DEFAULT_DAYS` | `30` | Default purge retention (days) |
 

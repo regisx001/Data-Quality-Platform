@@ -49,15 +49,16 @@ services:
 
     ports:
       - "${KAFKA_PORT:-9092}:9092"
+      - "${KAFKA_HOST_PORT:-9093}:9093"
 
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:9093,CONTROLLER://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9094
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
@@ -73,6 +74,30 @@ services:
 
     networks:
       - dqul-network
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   container_name: dqul-kafka-ui
+  #   # restart: unless-stopped
+
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+
+  #   ports:
+  #     - "${KAFKA_UI_PORT:-24001}:8080"
+
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: local
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+  #     # Optional — read/write access to the logs DB if you want the UI's SQL console:
+  #     # KAFKA_CLUSTERS_0_SCHEMAREGISTRY:
+  #     # KAFKA_CLUSTERS_0_READONLY: "true"
+  #     DYNAMIC_CONFIG_ENABLED: "true"
+
+  #   networks:
+  #     - dqul-network
+
+
   # spark-master:
   #   image: apache/spark:latest
   #   container_name: dqul-spark-master
