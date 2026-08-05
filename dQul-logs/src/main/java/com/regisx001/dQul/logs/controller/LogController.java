@@ -1,20 +1,20 @@
 package com.regisx001.dQul.logs.controller;
 
-import com.regisx001.dQul.logs.config.KafkaConfig;
+import com.regisx001.dQul.logs.common.error.ResourceNotFoundException;
 import com.regisx001.dQul.logs.domain.LogEntry;
-import com.regisx001.dQul.logs.dto.LogIngestionDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
 import com.regisx001.dQul.logs.service.LogService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,23 +22,11 @@ import java.util.UUID;
 @RequestMapping("/api/v1/logs")
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 @CrossOrigin(origins = "*")
 public class LogController {
 
     private final LogService logService;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
-
-    @PostMapping("/ingest")
-    public ResponseEntity<Map<String, String>> ingestLog(@RequestBody LogIngestionDto dto) {
-        if (dto.getTimestamp() == null) {
-            dto.setTimestamp(Instant.now());
-        }
-        if (dto.getServiceName() == null) {
-            dto.setServiceName("web-frontend");
-        }
-        kafkaTemplate.send(KafkaConfig.LOGS_TOPIC, dto.getTraceId() != null ? dto.getTraceId() : UUID.randomUUID().toString(), dto);
-        return ResponseEntity.accepted().body(Map.of("status", "ACCEPTED", "message", "Log event buffered into Kafka"));
-    }
 
     @GetMapping
     public ResponseEntity<Page<LogEntry>> queryLogs(
@@ -57,9 +45,8 @@ public class LogController {
 
     @GetMapping("/{id}")
     public ResponseEntity<LogEntry> getLogById(@PathVariable UUID id) {
-        return logService.getLogById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(logService.getLogById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Log entry not found: " + id)));
     }
 
     @GetMapping("/stats")
@@ -68,7 +55,8 @@ public class LogController {
     }
 
     @DeleteMapping("/purge")
-    public ResponseEntity<Map<String, String>> purgeLogs(@RequestParam(defaultValue = "30") int days) {
+    public ResponseEntity<Map<String, String>> purgeLogs(
+            @RequestParam(defaultValue = "30") @Min(1) @Max(365) int days) {
         logService.purgeLogsOlderThan(days);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Logs older than " + days + " days purged"));
     }

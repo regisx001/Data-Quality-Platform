@@ -2,7 +2,8 @@
 
 > **Scope boundary:** This plan covers the **standalone `dQul-logs` microservice** only.
 > It is intentionally **NOT wired into the main `dQul` application** (no module dependency,
-> no shared config, no changes to the root `docker-compose.yaml`, `web/`, or `dQul/`).
+> no shared config, no changes to `web/` or `dQul/`). Only shared platform infrastructure
+> (Kafka, PostgreSQL) is defined in the root `docker-compose.yaml`.
 
 ---
 
@@ -82,14 +83,14 @@ ingest → no `KafkaTemplate` producer inside this service). The new blockers ar
 - Durable persistence to PostgreSQL (Flyway-managed schema).
 - **Read/ops REST API:** query (filters + pagination), get-by-id, stats, purge.
 - Consistent API error responses on the read API.
-- Standalone local environment (own compose + Dockerfile + env docs).
+- Shared local environment: Kafka + Postgres in the root compose, `Dockerfile` + env docs.
 - Tests for the core paths.
 
 ### Out of scope (post-MVP / deferred)
 - **HTTP log ingestion (hybrid)** — `POST /api/v1/logs/ingest` is deferred to a post-MVP phase
   (kept out of the MVP surface; re-added later with HTTP-boundary validation, without touching
   the internal Kafka path).
-- Wiring into the main `dQul` app, `web/` frontend, or root compose.
+- Wiring the service as a module into the main `dQul` app or `web/` frontend.
 - Authentication/authorization of the logs API.
 - Exactly-once / idempotent dedup (Kafka is at-least-once → MVP accepts rare duplicates).
 - Centralized observability/metrics exporters (Prometheus/Grafana).
@@ -135,8 +136,8 @@ Source: `guidelines/spring-boot-scaffolding` + Kafka messaging best practices
 Prepares the service to run fully on its own.
 
 - **1.1** Add missing dependencies to `pom.xml` (validation, actuator, OpenAPI).
-- **1.2** Add a standalone `docker-compose.yaml` inside `dQul-logs` (Kafka + Postgres).
-- **1.3** Add `.env.example` documenting all service env vars.
+- **1.2** Add a `kafka` service to the root `docker-compose.yaml` (reuse the existing Postgres).
+- **1.3** Add Kafka env vars to the root `.env.example` (logs DB vars already present).
 - **1.4** Add service `README.md`; make `run.sh` self-contained (no root `.env` dependency).
 
 ### Phase 2 — Foundational: Contract & Consumer Reliability (Blocking prerequisites)
@@ -182,8 +183,8 @@ Verify + harden the feature set, adding tests as we go.
 
 ### Phase 1 — Standalone Environment
 - [ ] T001 [Plan:1.1] Add `spring-boot-starter-validation`, `spring-boot-starter-actuator`, and `org.springdoc:springdoc-openapi-starter-webmvc-ui` (2.x) to `dQul-logs/pom.xml`
-- [ ] T002 [P] [Plan:1.2] Create `dQul-logs/docker-compose.yaml` with two services: `logs-postgres` (Postgres 16, DB `dqul_logs`, port `3453:5432`, healthcheck) and `logs-kafka` (KRaft mode, `9092:9092`, healthcheck), on an isolated bridge network `dqul-logs-network`
-- [ ] T003 [P] [Plan:1.3] Create `dQul-logs/.env.example` documenting `DQUL_LOGS_DATABASE_URL`, `DQUL_LOGS_DATABASE_USERNAME`, `DQUL_LOGS_DATABASE_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `SERVER_PORT`, `LOGS_PURGE_DEFAULT_DAYS`
+- [ ] T002 [P] [Plan:1.2] Add a `kafka` service (KRaft mode, `9092:9092`, healthcheck) to the root `docker-compose.yaml`; reuse the existing `dqul-postgres` (already configured — no new Postgres service)
+- [ ] T003 [P] [Plan:1.3] Add `KAFKA_BOOTSTRAP_SERVERS` / `KAFKA_PORT` to the root `.env.example` (logs DB vars already present; `SERVER_PORT`/`LOGS_PURGE_DEFAULT_DAYS` documented in the README)
 - [ ] T004 [Plan:1.4] Create `dQul-logs/README.md` (overview, topic + endpoints table, standalone run: `docker compose up -d`, `./mvnw spring-boot:run`, sample producer command) and update `dQul-logs/run.sh` to source a local `./.env` if present, else rely on `application.yaml` defaults (remove hard dependency on `../.env`)
 
 ### Phase 2 — Foundational: Contract & Consumer Reliability
@@ -213,8 +214,8 @@ Verify + harden the feature set, adding tests as we go.
 ### Phase 5 — Containerize & Verify Standalone
 - [ ] T023 [Plan:5.1] Create `dQul-logs/Dockerfile` (multi-stage: `maven:3.9-eclipse-temurin-21` build → `eclipse-temurin:21-jre` runtime, `EXPOSE 7001`, `ENTRYPOINT ["java","-jar", ...]`)
 - [ ] T024 [P] [Plan:5.2] Create `dQul-logs/.dockerignore` (target/, .git/, *.md, .env)
-- [ ] T025 [Plan:5.3] Manual E2E verification: `docker compose up -d` (logs-kafka + logs-postgres), `./mvnw spring-boot:run`, then push a sample event via `kafka-console-producer` (key = traceId) → verify persisted via query API → get-by-id → stats → purge; push invalid JSON → verify DLT; confirm Swagger at `/swagger-ui.html`
-- [ ] T026 [Plan:5.4] Add a "Standalone by design" note to `dQul-logs/README.md`: this service is **not** registered as a module of the main `dQul` app, does **not** appear in the root `docker-compose.yaml`, and must remain independently deployable; HTTP ingest is deferred to a post-MVP hybrid phase
+- [ ] T025 [Plan:5.3] Manual E2E verification: `docker compose up -d` (root compose: `kafka` + `dqul-postgres`), `./mvnw spring-boot:run`, then push a sample event via `kafka-console-producer` (key = traceId) → verify persisted via query API → get-by-id → stats → purge; push invalid JSON → verify DLT; confirm Swagger at `/swagger-ui.html`
+- [ ] T026 [Plan:5.4] Add a "Standalone by design" note to `dQul-logs/README.md`: this service is **not** registered as a module of the main `dQul` app and remains independently deployable; shared infra (Kafka/Postgres) lives in the root `docker-compose.yaml`; HTTP ingest is deferred to a post-MVP hybrid phase
 
 ---
 
@@ -256,7 +257,7 @@ graph LR
 
 ## 10. Out of Scope Reminders
 
-- No changes to `dQul/` (main app), `web/` (frontend), or the root `docker-compose.yaml`.
+- No changes to `dQul/` (main app) or `web/` (frontend). Shared infra (Kafka) lives in the root `docker-compose.yaml`.
 - **No HTTP log ingestion in the MVP** — Kafka-native only; HTTP is the deferred hybrid path.
 - No authentication/authorization on the logs API in this MVP.
 - No exactly-once / idempotent dedup (at-least-once; rare duplicates accepted).

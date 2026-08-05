@@ -6,6 +6,14 @@
     "configurations": [
         {
             "type": "java",
+            "name": "LogsApplication",
+            "request": "launch",
+            "mainClass": "com.regisx001.dQul.logs.LogsApplication",
+            "projectName": "logs",
+            "envFile": "${workspaceFolder}/.env",
+        },
+        {
+            "type": "java",
             "name": "SparkProfilePostgres",
             "request": "launch",
             "mainClass": "com.regisx001.dQul.examples.SparkProfilePostgres",

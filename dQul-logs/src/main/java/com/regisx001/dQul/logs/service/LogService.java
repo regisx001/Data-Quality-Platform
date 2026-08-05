@@ -1,6 +1,8 @@
 package com.regisx001.dQul.logs.service;
 
+import com.regisx001.dQul.logs.common.error.LogValidationException;
 import com.regisx001.dQul.logs.domain.LogEntry;
+import com.regisx001.dQul.logs.domain.LogLevel;
 import com.regisx001.dQul.logs.dto.LogIngestionDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
 import com.regisx001.dQul.logs.repository.LogEntryRepository;
@@ -26,15 +28,42 @@ public class LogService {
 
     @Transactional
     public LogEntry saveLog(LogIngestionDto dto) {
+        return logEntryRepository.save(normalize(dto));
+    }
+
+    /**
+     * Validates and normalizes an incoming log event into a {@link LogEntry}.
+     * Throws {@link LogValidationException} for events that cannot be persisted
+     * (null payload, blank message, invalid log level, oversized category). In the
+     * Kafka consumer path this exception propagates to the container error handler,
+     * which routes the offending record to the dead-letter topic.
+     */
+    public LogEntry normalize(LogIngestionDto dto) {
         if (dto == null) {
-            return null;
+            throw new LogValidationException("Log event payload is null");
+        }
+        if (dto.getMessage() == null || dto.getMessage().isBlank()) {
+            throw new LogValidationException("message is required and must not be blank");
         }
 
-        LogEntry entry = LogEntry.builder()
+        LogLevel level = dto.getLogLevel() == null || dto.getLogLevel().isBlank()
+                ? LogLevel.INFO
+                : LogLevel.fromString(dto.getLogLevel())
+                        .orElseThrow(() -> new LogValidationException("Invalid logLevel: " + dto.getLogLevel()));
+
+        String category = dto.getCategory() == null || dto.getCategory().isBlank()
+                ? "INTERNAL_LOG"
+                : dto.getCategory().trim().toUpperCase();
+        if (category.length() > 32) {
+            throw new LogValidationException("category must be at most 32 characters");
+        }
+
+        return LogEntry.builder()
                 .traceId(dto.getTraceId())
-                .serviceName(dto.getServiceName() != null ? dto.getServiceName() : "unknown-service")
-                .logLevel(dto.getLogLevel() != null ? dto.getLogLevel().toUpperCase() : "INFO")
-                .category(dto.getCategory() != null ? dto.getCategory().toUpperCase() : "INTERNAL_LOG")
+                .serviceName(dto.getServiceName() != null && !dto.getServiceName().isBlank()
+                        ? dto.getServiceName().trim() : "unknown-service")
+                .logLevel(level.name())
+                .category(category)
                 .message(dto.getMessage())
                 .stackTrace(dto.getStackTrace())
                 .path(dto.getPath())
@@ -46,8 +75,6 @@ public class LogService {
                 .metadata(dto.getMetadata())
                 .timestamp(dto.getTimestamp() != null ? dto.getTimestamp() : Instant.now())
                 .build();
-
-        return logEntryRepository.save(entry);
     }
 
     @Transactional(readOnly = true)

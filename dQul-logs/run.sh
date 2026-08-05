@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -a
-source ../.env
+if [ -f ../.env ]; then
+  source ../.env
+elif [ -f ./.env ]; then
+  source ./.env
+fi
 set +a
 
 ./mvnw spring-boot:run

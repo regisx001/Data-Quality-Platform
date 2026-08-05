@@ -20,10 +20,11 @@ public class KafkaLogConsumer {
         groupId = "${spring.kafka.consumer.group-id:dqul-logs-group}"
     )
     public void consumeLogEvent(LogIngestionDto dto) {
-        try {
-            logService.saveLog(dto);
-        } catch (Exception e) {
-            log.error("Failed to process Kafka log event for traceId [{}]: {}", dto != null ? dto.getTraceId() : "N/A", e.getMessage(), e);
+        if (dto == null) {
+            log.warn("Received null log event; skipping");
+            return;
         }
+        logService.saveLog(dto);
+        log.info("Persisted log event for traceId [{}]", dto.getTraceId());
     }
 }

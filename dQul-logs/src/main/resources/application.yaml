@@ -1,19 +1,53 @@
 spring:
   application:
-    name: logs
+    name: dQul-logs
 
   datasource:
-    url: ${DQUL_LOGS_DATABASE_URL}
-    username: ${DQUL_LOGS_DATABASE_USERNAME}
-    password: ${DQUL_LOGS_DATABASE_PASSWORD}
-    driver-class-name: ${DATABASE_DRIVER}
+    url: ${DQUL_LOGS_DATABASE_URL:jdbc:postgresql://localhost:3452/dqul_logs}
+    username: ${DQUL_LOGS_DATABASE_USERNAME:postgres}
+    password: ${DQUL_LOGS_DATABASE_PASSWORD:postgres}
+    driver-class-name: ${DATABASE_DRIVER:org.postgresql.Driver}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
       idle-timeout: 300000
       connection-timeout: 20000
 
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: dqul-logs-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # JSON deserialization is configured programmatically in KafkaConfig
+      # (uses the application ObjectMapper with java.time support, ignores type headers,
+      #  maps to LogIngestionDto). Do NOT add spring.json.* properties here.
 
 server:
   port: 7001
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
