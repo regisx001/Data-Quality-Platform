@@ -27,6 +27,21 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9093}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: dqul-logs-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # JSON deserialization is configured programmatically in KafkaConfig
+      # (uses the application ObjectMapper with java.time support, ignores type headers,
+      #  maps to LogIngestionDto). Do NOT add spring.json.* properties here.
+
 security:
   jwt:
     key: ${JWT_SECRET_KEY}
