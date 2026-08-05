@@ -26,10 +26,11 @@ Data quality issues are expensive and hard to spot. This platform helps you:
 - **Authentication & Authorization** — JWT-based auth with Spring Security (register, login, token verification, role-based access).
 - **Object Storage** — MinIO integration for storing files (e.g., raw uploads, reports).
 - **Modern UI** — SvelteKit dashboard with dark mode, data tables, and chat-driven exploration.
+- **Centralized Logs Microservice** (`dQul-logs`) — a standalone service that ingests platform log events **natively over Kafka**, persists them to PostgreSQL, and exposes a read/ops REST API for querying, stats, and retention purge.
 
 ## Architecture
 
-The platform follows a **modular monolith** design (Java/Spring Boot backend) with a separate SvelteKit frontend, backed by PostgreSQL, MinIO, and an embedded Spark engine.
+The platform follows a **modular monolith** design (Java/Spring Boot backend) with a separate SvelteKit frontend, backed by PostgreSQL, MinIO, and an embedded Spark engine. A standalone **`dQul-logs` microservice** ingests platform log events over Kafka and persists them for querying and monitoring.
 
 ```mermaid
 graph LR
@@ -48,6 +49,14 @@ graph LR
         SPARK[Spark Engine]
     end
 
+    subgraph Logs["dQul-logs (Spring Boot :7001)"]
+        PROD[Producers<br/>(platform services)]
+        KAFKA[(Kafka)]
+        CONSUMER[Log Consumer]
+        LOGSDB[(PostgreSQL dqul_logs)]
+        LOGSAPI[Read/ops API]
+    end
+
     UI -->|"/api (JWT)"| AUTH
     UI -->|"/api (JWT)"| DS
     AUTH --> DB[(PostgreSQL)]
@@ -61,6 +70,11 @@ graph LR
     VAL --> DB
     FIND --> DB
     DS --> MINIO[(MinIO)]
+
+    PROD -->|JSON event, key = traceId| KAFKA
+    KAFKA --> CONSUMER
+    CONSUMER -->|validate + persist| LOGSDB
+    LOGSDB --> LOGSAPI
 ```
 
 ### Domain model
@@ -89,9 +103,11 @@ graph TD
 | Layer | Technology |
 |-------|-----------|
 | Backend | Java 21, Spring Boot 4.1.0, Spring Data JPA, Spring Security, Flyway |
+| Logs Microservice | Java 21, Spring Boot 3.4.2, Spring Data JPA, Kafka, Flyway |
 | Compute | Apache Spark 3.5.5 (Scala 2.13), ANTLR |
 | Frontend | SvelteKit 5, Svelte 5 (runes), TypeScript, Tailwind CSS 4, shadcn-svelte / bits-ui |
 | Database | PostgreSQL 16 (H2 for tests), Flyway migrations |
+| Messaging | Apache Kafka 3.8 (KRaft mode) |
 | Object Storage | MinIO |
 | Auth | JWT (jjwt 0.12.6) |
 | Build | Maven (backend), Vite (frontend) |
@@ -117,6 +133,17 @@ Data-Quality-Platform/
 │   └── src/main/resources/
 │       ├── application.yaml   # Config (env-driven)
 │       └── db/migration/      # Flyway migrations (V1–V5)
+├── dQul-logs/                 # Logs microservice — Spring Boot app (port 7001)
+│   ├── src/main/java/com/regisx001/dQul/logs/
+│   │   ├── config/            # Kafka configuration
+│   │   ├── controller/        # Read/ops REST API (query, get, stats, purge)
+│   │   ├── domain/            # LogEntry entity + LogLevel enum
+│   │   ├── dto/               # LogIngestionDto, LogStatsDto
+│   │   ├── kafka/             # KafkaLogConsumer
+│   │   ├── repository/        # LogEntryRepository (JPA + Specifications)
+│   │   └── service/           # LogService (save/query/stats/purge)
+│   ├── docs/                  # topic-contract.md, implementation-plan.md
+│   └── examples/              # Python Kafka log-event producer (CLI)
 ├── web/                       # Frontend — SvelteKit app
 │   └── src/
 │       ├── lib/               # Components, server API clients, stores
@@ -125,7 +152,7 @@ Data-Quality-Platform/
 │   ├── api-docs.md            # REST API reference
 │   └── POV.md                 # Microservices point-of-view
 ├── CONTEXT.md                 # System design & domain model
-├── docker-compose.yaml        # Postgres, MinIO (Spark optional)
+├── docker-compose.yaml        # Postgres, MinIO, Kafka (Spark optional)
 └── .env.example               # Environment template
 ```
 
@@ -162,8 +189,9 @@ This starts:
 
 - **PostgreSQL 16** — exposed on port `3452` (database `dqul`, user/pass `postgres`/`postgres` by default)
 - **MinIO** — API on `21001`, console on `21002` (default `minioadmin`/`minioadmin123`)
+- **Kafka 3.8** (KRaft) — broker on `9092` (in-network `kafka:9092`) and `9093` (host listener `localhost:9093`)
 
-Spark master/worker services are available in `docker-compose.yaml` but **commented out** — the backend runs Spark in embedded `local[*]` mode by default.
+A **Kafka UI** (`provectuslabs/kafka-ui`) service is also defined but **commented out** — uncomment it to browse topics at `http://localhost:24001`. Spark master/worker services are available in `docker-compose.yaml` but **commented out** — the backend runs Spark in embedded `local[*]` mode by default.
 
 ### 3. Run the backend
 
@@ -191,6 +219,22 @@ npm run dev
 
 Open the dev server (default `http://localhost:5173`). The Vite dev server proxies `/api` requests to `http://localhost:7000`.
 
+### 5. Run the logs microservice (optional)
+
+The `dQul-logs` service is **standalone** — independent from the main `dQul` app. It consumes log events over Kafka and persists them to a separate database:
+
+```sh
+# Start shared infra (includes Kafka)
+docker compose up -d
+
+# Run the logs microservice (its own pom/run script)
+cd dQul-logs
+./mvnw spring-boot:run
+# or ./run.sh
+```
+
+The logs read API is available at `http://localhost:7001/api/v1/logs` (Swagger at `http://localhost:7001/swagger-ui.html`).
+
 ## Environment Variables
 
 All configuration is externalized. See `.env.example` for the full list. Key variables:
@@ -204,6 +248,11 @@ All configuration is externalized. See `.env.example` for the full list. Key var
 | `MINIO_ENDPOINT` / `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `http://localhost:21001` / `minioadmin` / `minioadmin123` | MinIO connection |
 | `SPARK_MASTER` | `local[*]` | `spark://localhost:7077` for the standalone cluster |
 | `SPARK_ENABLED` | `true` | Enable the embedded Spark session |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9093` | Kafka broker address (host listener) |
+| `DQUL_LOGS_DATABASE_URL` | `jdbc:postgresql://localhost:3452/dqul_logs` | Logs microservice JDBC URL |
+| `DQUL_LOGS_DATABASE_USERNAME` / `DQUL_LOGS_DATABASE_PASSWORD` | `postgres` / `postgres` | Logs DB credentials |
+| `SERVER_PORT` | `7001` | Logs REST API port |
+| `LOGS_PURGE_DEFAULT_DAYS` | `30` | Logs retention purge (days) |
 
 ## API Overview
 
@@ -230,15 +279,20 @@ cd dQul
 
 Tests cover authentication, user management, JWT, security filters, connectors (CSV/Postgres), Spark providers, and the domain model.
 
+The `dQul-logs` microservice has its own test suite (`cd dQul-logs && ./mvnw test`), covering the log controller, service, consumer, and integration paths.
+
 ## Docker
 
-Dockerfiles exist at `dQul/Dockerfile` and `web/Dockerfile` for containerizing the backend and frontend respectively, alongside the infrastructure services in `docker-compose.yaml`.
+Dockerfiles exist at `dQul/Dockerfile`, `dQul-logs/Dockerfile`, and `web/Dockerfile` for containerizing the backend, logs microservice, and frontend respectively, alongside the infrastructure services (PostgreSQL, MinIO, Kafka) in `docker-compose.yaml`.
 
 ## Documentation
 
 - **[`CONTEXT.md`](CONTEXT.md)** — Goals, domain vocabulary, entities, and the complete data model.
 - **[`docs/api-docs.md`](docs/api-docs.md)** — REST API reference with examples and error responses.
 - **[`docs/POV.md`](docs/POV.md)** — A microservices-oriented design point of view for future evolution.
+- **[`dQul-logs/docs/topic-contract.md`](dQul-logs/docs/topic-contract.md)** — The `platform-logs-topic` message contract (event schema, key, validation, DLT).
+- **[`dQul-logs/docs/implementation-plan.md`](dQul-logs/docs/implementation-plan.md)** — The logs microservice MVP implementation plan.
+- **[`dQul-logs/examples/kafka_log_producer.py`](dQul-logs/examples/kafka_log_producer.py)** — A single-file Python CLI to stream realistic log events to Kafka over time.
 
 ## Roadmap
 
