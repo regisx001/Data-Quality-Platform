@@ -1,0 +1,530 @@
+{
+    "info": {
+        "_postman_id": "f5d2c9e1-8a3b-4c6d-9e2f-1b7a6c3d5f8a",
+        "name": "dQul-logs - Logs Microservice API",
+        "description": "Postman collection for the dQul-logs microservice — a standalone Spring Boot service that ingests platform log events natively over Kafka, persists them to PostgreSQL, and exposes a read/ops-only REST API for querying, stats, and retention purge.\n\nBase URL: http://localhost:7001\n\nEndpoints are read/ops only (MVP) — there is no auth in the MVP surface, and no HTTP write path (ingestion is Kafka-only).",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:7001",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Query Logs",
+            "description": "Paginated query of log entries. Supports filters (search, level, serviceName, category, traceId) and pagination (page, size). Results are sorted by timestamp descending.\n\nPagination bounds: page >= 0, size in 1..100 (default 20). Invalid params return 400 with the ApiError envelope.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs?level=INFO&size=20&page=0",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs"
+                    ],
+                    "query": [
+                        {
+                            "key": "level",
+                            "value": "INFO",
+                            "description": "Filter by log level (TRACE, DEBUG, INFO, WARN, ERROR, FATAL). Case-insensitive; 'ALL' or blank = no filter."
+                        },
+                        {
+                            "key": "size",
+                            "value": "20",
+                            "description": "Entries per page (1..100)."
+                        },
+                        {
+                            "key": "page",
+                            "value": "0",
+                            "description": "Zero-based page number (>= 0)."
+                        }
+                    ]
+                },
+                "description": "Returns a paginated envelope: content, page, size, totalElements, totalPages, first, last, hasNext, hasPrevious."
+            },
+            "response": [
+                {
+                    "name": "200 OK - paginated logs",
+                    "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/logs?level=INFO&size=20&page=0",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "logs"
+                            ],
+                            "query": [
+                                {
+                                    "key": "level",
+                                    "value": "INFO"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                }
+                            ]
+                        }
+                    },
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n  \"content\": [\n    {\n      \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n      \"traceId\": \"8f14e45f-ceea-4b7b-9e5b-4b6f9f0b8a1c\",\n      \"serviceName\": \"dQul-validation\",\n      \"logLevel\": \"INFO\",\n      \"category\": \"VALIDATION\",\n      \"message\": \"Validation completed for dataset 'sales': 1042 rows checked, 7 violations found\",\n      \"stackTrace\": null,\n      \"path\": \"/api/v1/datasets/123/validate\",\n      \"httpMethod\": \"POST\",\n      \"statusCode\": 200,\n      \"executionTimeMs\": 1840,\n      \"userId\": \"u-1042\",\n      \"userEmail\": \"engineer@example.com\",\n      \"metadata\": \"{\\\"dataset\\\":\\\"sales\\\",\\\"violations\\\":7}\",\n      \"timestamp\": \"2026-08-05T10:47:27.688Z\"\n    }\n  ],\n  \"page\": 0,\n  \"size\": 20,\n  \"totalElements\": 1,\n  \"totalPages\": 1,\n  \"first\": true,\n  \"last\": true,\n  \"hasNext\": false,\n  \"hasPrevious\": false\n}"
+                }
+            ]
+        },
+        {
+            "name": "Query Logs - Full Filter Set",
+            "description": "Query logs using every available filter at once, plus pagination.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs?search=customer_id&level=ERROR&serviceName=dQul-validation&category=VALIDATION&traceId=&page=0&size=10",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs"
+                    ],
+                    "query": [
+                        {
+                            "key": "search",
+                            "value": "customer_id",
+                            "description": "Free-text search over message and path (case-insensitive, substring)."
+                        },
+                        {
+                            "key": "level",
+                            "value": "ERROR",
+                            "description": "Filter by log level."
+                        },
+                        {
+                            "key": "serviceName",
+                            "value": "dQul-validation",
+                            "description": "Filter by exact service name (case-insensitive)."
+                        },
+                        {
+                            "key": "category",
+                            "value": "VALIDATION",
+                            "description": "Filter by category (case-insensitive)."
+                        },
+                        {
+                            "key": "traceId",
+                            "value": "",
+                            "description": "Filter by exact trace ID."
+                        },
+                        {
+                            "key": "page",
+                            "value": "0"
+                        },
+                        {
+                            "key": "size",
+                            "value": "10"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Query Logs - Second Page",
+            "description": "Retrieve page 2 (index 1) with 10 entries per page to exercise pagination navigation.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs?page=1&size=10",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs"
+                    ],
+                    "query": [
+                        {
+                            "key": "page",
+                            "value": "1"
+                        },
+                        {
+                            "key": "size",
+                            "value": "10"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Query Logs - Invalid Page (400)",
+            "description": "Negative page is invalid (page >= 0). Expect a 400 Bad Request with the ApiError envelope.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs?page=-1",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs"
+                    ],
+                    "query": [
+                        {
+                            "key": "page",
+                            "value": "-1"
+                        }
+                    ]
+                }
+            },
+            "response": [
+                {
+                    "name": "400 - parameter validation failed",
+                    "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/logs?page=-1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "logs"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "-1"
+                                }
+                            ]
+                        }
+                    },
+                    "status": "Bad Request",
+                    "code": 400,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n  \"timestamp\": \"2026-08-05T10:00:00Z\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Parameter validation failed\",\n  \"path\": \"/api/v1/logs\",\n  \"fieldErrors\": {\n    \"queryLogs.arg6\": \"must be greater than or equal to 0\"\n  }\n}"
+                }
+            ]
+        },
+        {
+            "name": "Query Logs - Oversized Page Size (400)",
+            "description": "Page size is capped at 100 (size <= 100). Expect a 400 Bad Request with the ApiError envelope.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs?size=200",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs"
+                    ],
+                    "query": [
+                        {
+                            "key": "size",
+                            "value": "200"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Log by ID",
+            "description": "Fetch a single log entry by its UUID. Replace the id in the URL with a real entry id (from a Query Logs response).",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs",
+                        "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    ]
+                }
+            },
+            "response": [
+                {
+                    "name": "200 OK - single entry",
+                    "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/logs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "logs",
+                                "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                            ]
+                        }
+                    },
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n  \"id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"traceId\": \"8f14e45f-ceea-4b7b-9e5b-4b6f9f0b8a1c\",\n  \"serviceName\": \"dQul-validation\",\n  \"logLevel\": \"INFO\",\n  \"category\": \"VALIDATION\",\n  \"message\": \"Validation completed for dataset 'sales': 1042 rows checked, 7 violations found\",\n  \"stackTrace\": null,\n  \"path\": \"/api/v1/datasets/123/validate\",\n  \"httpMethod\": \"POST\",\n  \"statusCode\": 200,\n  \"executionTimeMs\": 1840,\n  \"userId\": \"u-1042\",\n  \"userEmail\": \"engineer@example.com\",\n  \"metadata\": \"{\\\"dataset\\\":\\\"sales\\\",\\\"violations\\\":7}\",\n  \"timestamp\": \"2026-08-05T10:47:27.688Z\"\n}"
+                }
+            ]
+        },
+        {
+            "name": "Get Log by ID - Not Found (404)",
+            "description": "A non-existent id returns a 404 with the ApiError envelope.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs/00000000-0000-0000-0000-000000000000",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs",
+                        "00000000-0000-0000-0000-000000000000"
+                    ]
+                }
+            },
+            "response": [
+                {
+                    "name": "404 - not found",
+                    "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/logs/00000000-0000-0000-0000-000000000000",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "logs",
+                                "00000000-0000-0000-0000-000000000000"
+                            ]
+                        }
+                    },
+                    "status": "Not Found",
+                    "code": 404,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n  \"timestamp\": \"2026-08-05T10:00:00Z\",\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Log entry not found: 00000000-0000-0000-0000-000000000000\",\n  \"path\": \"/api/v1/logs/00000000-0000-0000-0000-000000000000\"\n}"
+                }
+            ]
+        },
+        {
+            "name": "Get Log Stats",
+            "description": "Aggregate stats over stored logs: totals, error/warn/info counts, error rate, average latency (24h), and breakdowns by service and category.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs/stats",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs",
+                        "stats"
+                    ]
+                }
+            },
+            "response": [
+                {
+                    "name": "200 OK - stats",
+                    "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/logs/stats",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "logs",
+                                "stats"
+                            ]
+                        }
+                    },
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n  \"totalLogs\": 543,\n  \"errorCount\": 87,\n  \"warnCount\": 116,\n  \"infoCount\": 289,\n  \"errorRatePercentage\": 16.02,\n  \"averageLatencyMs\": 1840.5,\n  \"logsByService\": {\n    \"dQul-validation\": 212,\n    \"dQul-api\": 144,\n    \"dQul-ingest\": 187\n  },\n  \"logsByCategory\": {\n    \"VALIDATION\": 201,\n    \"API\": 150,\n    \"INGESTION\": 192\n  }\n}"
+                }
+            ]
+        },
+        {
+            "name": "Purge Logs",
+            "description": "Delete log entries older than N days (1..365). Default is 30 days. This is destructive.",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs/purge?days=30",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs",
+                        "purge"
+                    ],
+                    "query": [
+                        {
+                            "key": "days",
+                            "value": "30",
+                            "description": "Retention window in days (1..365). Entries older than this are deleted."
+                        }
+                    ]
+                },
+                "description": "Returns a success envelope: { status: SUCCESS, message: ... }"
+            },
+            "response": [
+                {
+                    "name": "200 OK - purge success",
+                    "originalRequest": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/logs/purge?days=30",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "logs",
+                                "purge"
+                            ],
+                            "query": [
+                                {
+                                    "key": "days",
+                                    "value": "30"
+                                }
+                            ]
+                        }
+                    },
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n  \"status\": \"SUCCESS\",\n  \"message\": \"Logs older than 30 days purged\"\n}"
+                }
+            ]
+        }
+    ]
+}

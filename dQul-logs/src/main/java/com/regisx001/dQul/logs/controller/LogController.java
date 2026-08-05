@@ -2,6 +2,7 @@ package com.regisx001.dQul.logs.controller;
 
 import com.regisx001.dQul.logs.common.error.ResourceNotFoundException;
 import com.regisx001.dQul.logs.domain.LogEntry;
+import com.regisx001.dQul.logs.dto.LogPageDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
 import com.regisx001.dQul.logs.service.LogService;
 import jakarta.validation.constraints.Max;
@@ -29,18 +30,27 @@ public class LogController {
     private final LogService logService;
 
     @GetMapping
-    public ResponseEntity<Page<LogEntry>> queryLogs(
+    public ResponseEntity<LogPageDto> queryLogs(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String level,
             @RequestParam(required = false) String serviceName,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String traceId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
         Page<LogEntry> logs = logService.queryLogs(search, level, serviceName, category, traceId, pageable);
-        return ResponseEntity.ok(logs);
+        return ResponseEntity.ok(LogPageDto.builder()
+                .content(logs.getContent())
+                .page(logs.getNumber())
+                .size(logs.getSize())
+                .totalElements(logs.getTotalElements())
+                .totalPages(logs.getTotalPages())
+                .first(logs.isFirst())
+                .last(logs.isLast())
+                .hasNext(logs.hasNext())
+                .hasPrevious(logs.hasPrevious())
+                .build());
     }
 
     @GetMapping("/{id}")

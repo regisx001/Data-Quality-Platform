@@ -86,6 +86,39 @@ curl "http://localhost:7001/api/v1/logs?serviceName=demo-service"
 | GET | `/api/v1/logs/stats` | Aggregate stats (totals, error rate, avg latency, by service/category) |
 | DELETE | `/api/v1/logs/purge?days=30` | Purge logs older than N days (1–365) |
 
+### Pagination
+
+`GET /api/v1/logs` is paginated. Parameters:
+
+| Param | Default | Bounds | Description |
+|-------|---------|--------|-------------|
+| `page` | `0` | `>= 0` | Zero-based page number |
+| `size` | `20` | `1..100` | Entries per page (capped at 100) |
+
+Results are sorted by `timestamp` descending. The response is a paginated envelope:
+
+```jsonc
+{
+  "content": [ /* LogEntry objects */ ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 543,
+  "totalPages": 28,
+  "first": true,
+  "last": false,
+  "hasNext": true,
+  "hasPrevious": false
+}
+```
+
+Example — second page of 10 ERROR logs for a service:
+
+```bash
+curl "http://localhost:7001/api/v1/logs?level=ERROR&serviceName=dQul-validation&page=1&size=10"
+```
+
+Invalid parameters (e.g. `page=-1` or `size=200`) return a `400` with the `ApiError` envelope.
+
 ## Config
 
 All configuration is env-var driven with sensible defaults (see `application.yaml` and
