@@ -26,205 +26,209 @@ import com.regisx001.dQul.authentication.dto.AuthenticationRequest;
 import com.regisx001.dQul.authentication.dto.AuthenticationResponse;
 import com.regisx001.dQul.authentication.dto.RegisterRequest;
 import com.regisx001.dQul.common.domain.User;
+import com.regisx001.dQul.common.service.LogsProducer;
 import com.regisx001.dQul.authentication.service.AuthenticationService;
 
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
-    private MockMvc mockMvc;
+        private MockMvc mockMvc;
 
-    @Mock
-    private AuthenticationService authenticationService;
+        @Mock
+        private AuthenticationService authenticationService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+        @Mock
+        private LogsProducer logsProducer;
 
-    private static final String BASE_URL = "/api/v1/auth";
+        private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private UUID userId;
-    private User mockUser;
+        private static final String BASE_URL = "/api/v1/auth";
 
-    @BeforeEach
-    void setUp() {
-        userId = UUID.randomUUID();
-        mockUser = User.builder()
-                .id(userId)
-                .username("current")
-                .email("current@example.com")
-                .fullName("Current User")
-                .role("USER")
-                .build();
+        private UUID userId;
+        private User mockUser;
 
-        AuthController controller = new AuthController(authenticationService);
+        @BeforeEach
+        void setUp() {
+                userId = UUID.randomUUID();
+                mockUser = User.builder()
+                                .id(userId)
+                                .username("current")
+                                .email("current@example.com")
+                                .fullName("Current User")
+                                .role("USER")
+                                .build();
 
-        // Custom resolver to return mockUser for @AuthenticationPrincipal
-        HandlerMethodArgumentResolver authPrincipalResolver = new HandlerMethodArgumentResolver() {
-            @Override
-            public boolean supportsParameter(MethodParameter parameter) {
-                return parameter.hasParameterAnnotation(
-                        org.springframework.security.core.annotation.AuthenticationPrincipal.class);
-            }
+                AuthController controller = new AuthController(authenticationService, logsProducer);
 
-            @Override
-            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                    NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-                return mockUser;
-            }
-        };
+                // Custom resolver to return mockUser for @AuthenticationPrincipal
+                HandlerMethodArgumentResolver authPrincipalResolver = new HandlerMethodArgumentResolver() {
+                        @Override
+                        public boolean supportsParameter(MethodParameter parameter) {
+                                return parameter.hasParameterAnnotation(
+                                                org.springframework.security.core.annotation.AuthenticationPrincipal.class);
+                        }
 
-        mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setCustomArgumentResolvers(authPrincipalResolver)
-                .build();
-    }
+                        @Override
+                        public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
+                                        NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+                                return mockUser;
+                        }
+                };
 
-    // ── register ───────────────────────────────────────────────────────
+                mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                                .setCustomArgumentResolvers(authPrincipalResolver)
+                                .build();
+        }
 
-    @Test
-    void register_shouldReturn201() throws Exception {
-        RegisterRequest request = RegisterRequest.builder()
-                .username("newuser")
-                .email("new@example.com")
-                .password("password123")
-                .fullName("New User")
-                .role("USER")
-                .build();
+        // ── register ───────────────────────────────────────────────────────
 
-        AuthenticationResponse response = AuthenticationResponse.builder()
-                .token("jwt-token")
-                .expiresIn(86400000L)
-                .userId(UUID.randomUUID())
-                .username("newuser")
-                .email("new@example.com")
-                .fullName("New User")
-                .role("USER")
-                .build();
+        @Test
+        void register_shouldReturn201() throws Exception {
+                RegisterRequest request = RegisterRequest.builder()
+                                .username("newuser")
+                                .email("new@example.com")
+                                .password("password123")
+                                .fullName("New User")
+                                .role("USER")
+                                .build();
 
-        when(authenticationService.register(any(RegisterRequest.class))).thenReturn(response);
+                AuthenticationResponse response = AuthenticationResponse.builder()
+                                .token("jwt-token")
+                                .expiresIn(86400000L)
+                                .userId(UUID.randomUUID())
+                                .username("newuser")
+                                .email("new@example.com")
+                                .fullName("New User")
+                                .role("USER")
+                                .build();
 
-        mockMvc.perform(post(BASE_URL + "/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value("jwt-token"))
-                .andExpect(jsonPath("$.username").value("newuser"))
-                .andExpect(jsonPath("$.email").value("new@example.com"));
-    }
+                when(authenticationService.register(any(RegisterRequest.class))).thenReturn(response);
 
-    @Test
-    void register_shouldReturn400OnDuplicate() throws Exception {
-        RegisterRequest request = RegisterRequest.builder()
-                .username("existing")
-                .email("e@example.com")
-                .password("pass123")
-                .fullName("Existing")
-                .build();
+                mockMvc.perform(post(BASE_URL + "/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.token").value("jwt-token"))
+                                .andExpect(jsonPath("$.username").value("newuser"))
+                                .andExpect(jsonPath("$.email").value("new@example.com"));
+        }
 
-        when(authenticationService.register(any(RegisterRequest.class)))
-                .thenThrow(new IllegalArgumentException("Username 'existing' is already taken"));
+        @Test
+        void register_shouldReturn400OnDuplicate() throws Exception {
+                RegisterRequest request = RegisterRequest.builder()
+                                .username("existing")
+                                .email("e@example.com")
+                                .password("pass123")
+                                .fullName("Existing")
+                                .build();
 
-        mockMvc.perform(post(BASE_URL + "/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.message").value("Username 'existing' is already taken"));
-    }
+                when(authenticationService.register(any(RegisterRequest.class)))
+                                .thenThrow(new IllegalArgumentException("Username 'existing' is already taken"));
 
-    // ── login ────────────────────────────────────────────────────────────
+                mockMvc.perform(post(BASE_URL + "/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400))
+                                .andExpect(jsonPath("$.message").value("Username 'existing' is already taken"));
+        }
 
-    @Test
-    void login_shouldReturn200() throws Exception {
-        AuthenticationRequest request = AuthenticationRequest.builder()
-                .login("testuser")
-                .password("pass123")
-                .build();
+        // ── login ────────────────────────────────────────────────────────────
 
-        AuthenticationResponse response = AuthenticationResponse.builder()
-                .token("jwt-token")
-                .expiresIn(86400000L)
-                .userId(UUID.randomUUID())
-                .username("testuser")
-                .email("test@example.com")
-                .fullName("Test User")
-                .role("USER")
-                .build();
+        @Test
+        void login_shouldReturn200() throws Exception {
+                AuthenticationRequest request = AuthenticationRequest.builder()
+                                .login("testuser")
+                                .password("pass123")
+                                .build();
 
-        when(authenticationService.authenticate(any(AuthenticationRequest.class))).thenReturn(response);
+                AuthenticationResponse response = AuthenticationResponse.builder()
+                                .token("jwt-token")
+                                .expiresIn(86400000L)
+                                .userId(UUID.randomUUID())
+                                .username("testuser")
+                                .email("test@example.com")
+                                .fullName("Test User")
+                                .role("USER")
+                                .build();
 
-        mockMvc.perform(post(BASE_URL + "/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("jwt-token"))
-                .andExpect(jsonPath("$.username").value("testuser"));
-    }
+                when(authenticationService.authenticate(any(AuthenticationRequest.class))).thenReturn(response);
 
-    @Test
-    void login_shouldReturn401OnInvalidCredentials() throws Exception {
-        AuthenticationRequest request = AuthenticationRequest.builder()
-                .login("testuser")
-                .password("wrong")
-                .build();
+                mockMvc.perform(post(BASE_URL + "/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.token").value("jwt-token"))
+                                .andExpect(jsonPath("$.username").value("testuser"));
+        }
 
-        when(authenticationService.authenticate(any(AuthenticationRequest.class)))
-                .thenThrow(new IllegalArgumentException("Invalid credentials"));
+        @Test
+        void login_shouldReturn401OnInvalidCredentials() throws Exception {
+                AuthenticationRequest request = AuthenticationRequest.builder()
+                                .login("testuser")
+                                .password("wrong")
+                                .build();
 
-        mockMvc.perform(post(BASE_URL + "/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.status").value(401));
-    }
+                when(authenticationService.authenticate(any(AuthenticationRequest.class)))
+                                .thenThrow(new IllegalArgumentException("Invalid credentials"));
 
-    @Test
-    void login_shouldReturn401OnDeactivatedUser() throws Exception {
-        AuthenticationRequest request = AuthenticationRequest.builder()
-                .login("inactive")
-                .password("pass")
-                .build();
+                mockMvc.perform(post(BASE_URL + "/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(jsonPath("$.status").value(401));
+        }
 
-        when(authenticationService.authenticate(any(AuthenticationRequest.class)))
-                .thenThrow(new IllegalStateException("User account is deactivated"));
+        @Test
+        void login_shouldReturn401OnDeactivatedUser() throws Exception {
+                AuthenticationRequest request = AuthenticationRequest.builder()
+                                .login("inactive")
+                                .password("pass")
+                                .build();
 
-        mockMvc.perform(post(BASE_URL + "/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.status").value(401));
-    }
+                when(authenticationService.authenticate(any(AuthenticationRequest.class)))
+                                .thenThrow(new IllegalStateException("User account is deactivated"));
 
-    // ── verify ──────────────────────────────────────────────────────────
+                mockMvc.perform(post(BASE_URL + "/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(jsonPath("$.status").value(401));
+        }
 
-    @Test
-    void verify_shouldReturn200WhenValid() throws Exception {
-        when(authenticationService.verifyToken("valid-token")).thenReturn(true);
+        // ── verify ──────────────────────────────────────────────────────────
 
-        mockMvc.perform(post(BASE_URL + "/verify")
-                .contentType(MediaType.TEXT_PLAIN)
-                .content("valid-token"))
-                .andExpect(status().isOk());
-    }
+        @Test
+        void verify_shouldReturn200WhenValid() throws Exception {
+                when(authenticationService.verifyToken("valid-token")).thenReturn(true);
 
-    @Test
-    void verify_shouldReturn401WhenExpired() throws Exception {
-        when(authenticationService.verifyToken("expired-token")).thenReturn(false);
+                mockMvc.perform(post(BASE_URL + "/verify")
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .content("valid-token"))
+                                .andExpect(status().isOk());
+        }
 
-        mockMvc.perform(post(BASE_URL + "/verify")
-                .contentType(MediaType.TEXT_PLAIN)
-                .content("expired-token"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Token is invalid or expired"));
-    }
+        @Test
+        void verify_shouldReturn401WhenExpired() throws Exception {
+                when(authenticationService.verifyToken("expired-token")).thenReturn(false);
 
-    // ── me ──────────────────────────────────────────────────────────────
+                mockMvc.perform(post(BASE_URL + "/verify")
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .content("expired-token"))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(jsonPath("$.message").value("Token is invalid or expired"));
+        }
 
-    @Test
-    void me_shouldReturnCurrentUser() throws Exception {
-        mockMvc.perform(get(BASE_URL + "/me"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(userId.toString()))
-                .andExpect(jsonPath("$.username").value("current"))
-                .andExpect(jsonPath("$.email").value("current@example.com"))
-                .andExpect(jsonPath("$.fullName").value("Current User"))
-                .andExpect(jsonPath("$.role").value("USER"));
-    }
+        // ── me ──────────────────────────────────────────────────────────────
+
+        @Test
+        void me_shouldReturnCurrentUser() throws Exception {
+                mockMvc.perform(get(BASE_URL + "/me"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.userId").value(userId.toString()))
+                                .andExpect(jsonPath("$.username").value("current"))
+                                .andExpect(jsonPath("$.email").value("current@example.com"))
+                                .andExpect(jsonPath("$.fullName").value("Current User"))
+                                .andExpect(jsonPath("$.role").value("USER"));
+        }
 }
