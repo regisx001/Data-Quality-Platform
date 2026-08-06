@@ -1,13 +1,12 @@
 package com.regisx001.dQul.logs.controller;
 
 import com.regisx001.dQul.logs.domain.LogEntry;
+import com.regisx001.dQul.logs.dto.LogQueryResultDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
 import com.regisx001.dQul.logs.service.LogService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,8 +45,11 @@ class LogControllerTest {
                                 .timestamp(Instant.now())
                                 .build();
                 List<LogEntry> entries = List.of(entry);
-                Page<LogEntry> page = new PageImpl<>(entries, PageRequest.of(0, 20), 1);
-                when(logService.queryLogs(any(), any(), any(), any(), any(), any())).thenReturn(page);
+                LogQueryResultDto result = LogQueryResultDto.builder()
+                                .content(entries)
+                                .totalElements(1L)
+                                .build();
+                when(logService.queryLogs(any(), any(), any(), any(), any(), any())).thenReturn(result);
 
                 mockMvc.perform(get("/api/v1/logs").param("level", "INFO"))
                                 .andExpect(status().isOk())

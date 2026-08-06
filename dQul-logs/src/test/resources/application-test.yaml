@@ -12,6 +12,11 @@ spring:
       ddl-auto: none
     show-sql: false
 
+  # Redis is NOT required for the standalone test suite. Use the in-memory
+  # ConcurrentMap cache backend so caching annotations work without a Redis server.
+  cache:
+    type: simple
+
   flyway:
     enabled: true
     baseline-on-migrate: true

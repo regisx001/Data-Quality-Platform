@@ -40,6 +40,28 @@ spring:
       # (uses the application ObjectMapper with java.time support, ignores type headers,
       #  maps to LogIngestionDto). Do NOT add spring.json.* properties here.
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:7379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3s
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: ${CACHE_TTL:5m}
+      cache-null-values: false
+      key-prefix: dqul-logs
+      use-key-prefix: true
+
 server:
   port: 7001
 

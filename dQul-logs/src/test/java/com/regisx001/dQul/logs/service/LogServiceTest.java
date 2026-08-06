@@ -3,6 +3,7 @@ package com.regisx001.dQul.logs.service;
 import com.regisx001.dQul.logs.common.error.LogValidationException;
 import com.regisx001.dQul.logs.domain.LogEntry;
 import com.regisx001.dQul.logs.dto.LogIngestionDto;
+import com.regisx001.dQul.logs.dto.LogQueryResultDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
 import com.regisx001.dQul.logs.repository.LogEntryRepository;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -119,8 +121,14 @@ class LogServiceTest {
     @Test
     void queryLogs_delegatesWithPageable() {
         Pageable pageable = PageRequest.of(0, 20);
-        logService.queryLogs("search", "ERROR", "svc", "cat", "trace", pageable);
+        when(repository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(Page.empty(pageable));
+
+        LogQueryResultDto result = logService.queryLogs("search", "ERROR", "svc", "cat", "trace", pageable);
+
         verify(repository).findAll(any(Specification.class), eq(pageable));
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
     }
 
     // --- stats ---

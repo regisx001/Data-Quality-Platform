@@ -3,19 +3,20 @@ package com.regisx001.dQul.logs.controller;
 import com.regisx001.dQul.logs.common.error.ResourceNotFoundException;
 import com.regisx001.dQul.logs.domain.LogEntry;
 import com.regisx001.dQul.logs.dto.LogPageDto;
+import com.regisx001.dQul.logs.dto.LogQueryResultDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
 import com.regisx001.dQul.logs.service.LogService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,17 +40,21 @@ public class LogController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
-        Page<LogEntry> logs = logService.queryLogs(search, level, serviceName, category, traceId, pageable);
+        LogQueryResultDto result = logService.queryLogs(search, level, serviceName, category, traceId, pageable);
+        List<LogEntry> content = result.getContent();
+        long totalElements = result.getTotalElements();
+        int totalPages = size == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+        boolean hasNext = page + 1 < totalPages;
         return ResponseEntity.ok(LogPageDto.builder()
-                .content(logs.getContent())
-                .page(logs.getNumber())
-                .size(logs.getSize())
-                .totalElements(logs.getTotalElements())
-                .totalPages(logs.getTotalPages())
-                .first(logs.isFirst())
-                .last(logs.isLast())
-                .hasNext(logs.hasNext())
-                .hasPrevious(logs.hasPrevious())
+                .content(content)
+                .page(page)
+                .size(size)
+                .totalElements(totalElements)
+                .totalPages(totalPages)
+                .first(page == 0)
+                .last(!hasNext)
+                .hasNext(hasNext)
+                .hasPrevious(page > 0)
                 .build());
     }
 

@@ -1,14 +1,14 @@
 # dQul-logs
 
 Logs microservice for the Data Quality Platform — a Spring Boot 3.4.2 / Java 21 service that
-**ingests log events natively over Kafka**, persists them to PostgreSQL, and exposes a
-read/ops-only REST API for querying, stats, and retention purge.
+**ingests log events natively over Kafka**, persists them to PostgreSQL, caches hot reads in
+**Redis**, and exposes a read/ops-only REST API for querying, stats, and retention purge.
 
 > **Standalone by design**
 > This service is **not** registered as a module of the main `dQul` application and remains
-> independently deployable. It shares platform infrastructure (Kafka, PostgreSQL) defined in the
-> root `docker-compose.yaml`. HTTP log ingestion is deferred to a post-MVP hybrid phase — the
-> write path is Kafka-only.
+> independently deployable. It shares platform infrastructure (Kafka, PostgreSQL, Redis) defined
+> in the root `docker-compose.yaml`. HTTP log ingestion is deferred to a post-MVP hybrid phase —
+> the write path is Kafka-only.
 
 ## Architecture
 
@@ -18,6 +18,8 @@ graph LR
     T --> C[KafkaLogConsumer]
     C -->|validate + persist| DB[(PostgreSQL<br/>dqul_logs)]
     DB --> API[Read/ops REST API<br/>:7001 /api/v1/logs]
+    API -.->|read-through cache| R[(Redis<br/>:7379)]
+    R -->|evict on write/purge| API
 ```
 
 - **Ingestion:** Kafka-native. Producers publish log events to `platform-logs-topic`
@@ -26,19 +28,21 @@ graph LR
   `log_entries` (PostgreSQL, Flyway-managed schema).
 - **Poison messages:** bad events are routed to `platform-logs-topic.DLT`.
 - **Read API:** query, get-by-id, stats, purge — no write endpoints in the MVP.
+- **Caching:** hot read paths (lookup by id, stats, paginated queries) are cached in Redis via
+  Spring Cache. Cached entries are evicted when a new log is persisted or logs are purged.
 
 ## Requirements
 
 - JDK 21
-- Docker (for the standalone Kafka + Postgres)
+- Docker (for the standalone Kafka + Postgres + Redis)
 
 ## Running locally (standalone)
 
 From the repository root:
 
 ```bash
-# 1. Start shared infra: Postgres (dqul-postgres) + Kafka
-#    (DB is already configured; Kafka is defined in the root docker-compose.yaml)
+# 1. Start shared infra: Postgres (dqul-postgres) + Kafka + Redis
+#    (DB is already configured; Kafka and Redis are defined in the root docker-compose.yaml)
 docker compose up -d
 
 # 2. (optional) copy env overrides from the root template
@@ -53,6 +57,33 @@ cd dQul-logs
 
 The read API is available at `http://localhost:7001/api/v1/logs` and Swagger docs at
 `http://localhost:7001/swagger-ui.html`.
+
+## Caching (Redis)
+
+The read paths are cached in Redis using Spring Cache. Because writes arrive over Kafka
+(ingestion) rather than through the API, cache coherency is maintained by evicting on mutation:
+
+| Cache | Key | TTL | Description |
+|-------|-----|-----|-------------|
+| `logById` | log entry UUID | 30 min | Single log entry fetched by id |
+| `logStats` | `(static)` | 30 s | Aggregated stats dashboard payload |
+| `logQuery` | normalized filter + pagination tuple | 5 min | Paginated query results |
+
+- Keys are stored as `dqul-logs:<cache>:<key>` so namespaces are easy to inspect and purge.
+- Values are JSON-serialized (with type info) so `Instant` timestamps round-trip correctly.
+- `logStats` uses a short TTL to stay reasonably fresh without hammering the DB.
+- Every persisted log or purge **evicts** `logStats` and `logQuery`; `logById` is evicted on purge
+  but kept across appends (append-only logs mean old entries don't change).
+
+### Quick sanity check
+
+```bash
+# Write some logs, then read them — subsequent identical reads hit Redis
+curl -s "http://localhost:7001/api/v1/logs?serviceName=demo-service"
+
+# Inspect the cache from inside the container
+docker exec -it dqul-redis redis-cli KEYS 'dqul-logs:*'
+```
 
 ## Producing a log event (Kafka)
 

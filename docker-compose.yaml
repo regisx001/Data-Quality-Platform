@@ -74,6 +74,27 @@ services:
 
     networks:
       - dqul-network
+  redis:
+    image: redis:7.4-alpine
+    container_name: dqul-redis
+    # restart: unless-stopped
+
+    ports:
+      - "${REDIS_PORT:-7379}:6379"
+
+    command: [ "redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru" ]
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - dqul-network
   # kafka-ui:
   #   image: provectuslabs/kafka-ui:latest
   #   container_name: dqul-kafka-ui
@@ -122,6 +143,7 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  redis_data:
 
 networks:
   dqul-network:
