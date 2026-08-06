@@ -317,7 +317,7 @@ def _produce(
                 log_level=log_level,
                 seed=rng.randint(0, 2**31 - 1),
             )
-            producer.send(topic, key=event["traceId"], value=json.dumps(event))
+            producer.send(topic, key=event["traceId"], value=event)
             sent += 1
             if sent == 1 or sent % 10 == 0 or sent == count:
                 print(
@@ -385,7 +385,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     producer = KafkaProducer(
         bootstrap_servers=args.bootstrap_servers,
         key_serializer=StringSerializer("utf-8"),
-        value_serializer=StringSerializer("utf-8"),
+        # Encode the event dict as a JSON *object* on the wire. kafka-python has no
+        # built-in JSON serializer, so use a lambda. Sending the dict directly (not
+        # json.dumps(...)) ensures consumers' JsonDeserializer can map it to
+        # LogIngestionDto instead of receiving a quoted JSON string.
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
     )
     try:
         sent = _produce(

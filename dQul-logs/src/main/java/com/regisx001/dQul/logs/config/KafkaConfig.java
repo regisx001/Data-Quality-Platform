@@ -15,6 +15,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -52,10 +53,21 @@ public class KafkaConfig {
     public ConsumerFactory<String, LogIngestionDto> kafkaConsumerFactory(
             KafkaProperties kafkaProperties, ObjectMapper objectMapper) {
         Map<String, Object> props = kafkaProperties.buildConsumerProperties();
-        JsonDeserializer<LogIngestionDto> valueDeserializer =
+        // Inner JSON deserializer maps the payload to LogIngestionDto regardless
+        // of producer type headers, using the application ObjectMapper (java.time
+        // support) so ISO-8601 timestamps deserialize to Instant.
+        JsonDeserializer<LogIngestionDto> jsonDeserializer =
                 new JsonDeserializer<>(LogIngestionDto.class, objectMapper);
-        valueDeserializer.setUseTypeHeaders(false);
-        valueDeserializer.addTrustedPackages("*");
+        jsonDeserializer.setUseTypeHeaders(false);
+        jsonDeserializer.addTrustedPackages("*");
+        // Wrap in ErrorHandlingDeserializer so that deserialization failures
+        // (e.g. a String value that cannot map to LogIngestionDto) surface as a
+        // recoverable DeserializationException. This lets the container's
+        // DefaultErrorHandler retry and then route poison messages to the DLT,
+        // instead of throwing IllegalStateException and wedging the consumer at
+        // the same offset forever.
+        ErrorHandlingDeserializer<LogIngestionDto> valueDeserializer =
+                new ErrorHandlingDeserializer<>(jsonDeserializer);
         return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), valueDeserializer);
     }
 
