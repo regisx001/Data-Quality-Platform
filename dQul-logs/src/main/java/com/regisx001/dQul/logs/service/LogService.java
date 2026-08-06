@@ -31,7 +31,7 @@ public class LogService {
     private final LogEntryRepository logEntryRepository;
 
     @Transactional
-    @CacheEvict(cacheNames = {CacheConfig.CACHE_LOG_STATS, CacheConfig.CACHE_LOG_QUERY}, allEntries = true)
+    @CacheEvict(cacheNames = { CacheConfig.CACHE_LOG_STATS, CacheConfig.CACHE_LOG_QUERY }, allEntries = true)
     public LogEntry saveLog(LogIngestionDto dto) {
         return logEntryRepository.save(normalize(dto));
     }
@@ -66,7 +66,8 @@ public class LogService {
         return LogEntry.builder()
                 .traceId(dto.getTraceId())
                 .serviceName(dto.getServiceName() != null && !dto.getServiceName().isBlank()
-                        ? dto.getServiceName().trim() : "unknown-service")
+                        ? dto.getServiceName().trim()
+                        : "unknown-service")
                 .logLevel(level.name())
                 .category(category)
                 .message(dto.getMessage())
@@ -87,7 +88,8 @@ public class LogService {
      * {@link LogQueryResultDto} holding the page content plus the total element
      * count.
      *
-     * <p>The result is cached under {@link CacheConfig#CACHE_LOG_QUERY}. We cache
+     * <p>
+     * The result is cached under {@link CacheConfig#CACHE_LOG_QUERY}. We cache
      * the concrete DTO rather than a {@link Page} / {@code PageImpl} because the
      * polymorphic {@code PageImpl} wrapper does not round-trip through Redis JSON
      * serialization (its type id is denied by the {@code PolymorphicTypeValidator},
@@ -95,7 +97,8 @@ public class LogService {
      */
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheConfig.CACHE_LOG_QUERY, key = "#root.target.queryCacheKey(#search, #logLevel, #serviceName, #category, #traceId, #pageable)")
-    public LogQueryResultDto queryLogs(String search, String logLevel, String serviceName, String category, String traceId, Pageable pageable) {
+    public LogQueryResultDto queryLogs(String search, String logLevel, String serviceName, String category,
+            String traceId, Pageable pageable) {
         Specification<LogEntry> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -187,7 +190,7 @@ public class LogService {
      * entry regardless of null-vs-empty filter values.
      */
     public String queryCacheKey(String search, String logLevel, String serviceName,
-                                String category, String traceId, Pageable pageable) {
+            String category, String traceId, Pageable pageable) {
         return String.join("|",
                 nullToEmpty(search),
                 nullToEmpty(logLevel),

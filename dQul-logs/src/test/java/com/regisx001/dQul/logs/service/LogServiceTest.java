@@ -141,8 +141,9 @@ class LogServiceTest {
         when(repository.countByLogLevel("WARN")).thenReturn(20L);
         when(repository.countByLogLevel("INFO")).thenReturn(65L);
         when(repository.getAverageExecutionTimeSince(any(Instant.class))).thenReturn(250.5);
-        when(repository.countLogsByService()).thenReturn(Collections.singletonList(new Object[]{"svc", 100L}));
-        when(repository.countLogsByCategory()).thenReturn(Collections.singletonList(new Object[]{"VALIDATION", 100L}));
+        when(repository.countLogsByService()).thenReturn(Collections.singletonList(new Object[] { "svc", 100L }));
+        when(repository.countLogsByCategory())
+                .thenReturn(Collections.singletonList(new Object[] { "VALIDATION", 100L }));
 
         LogStatsDto stats = logService.getLogStats();
 

@@ -19,10 +19,12 @@ import java.time.Duration;
 /**
  * Configures Redis-backed Spring Cache with JSON serialization.
  *
- * <p>Values (e.g. {@link com.regisx001.dQul.logs.domain.LogEntry}, which contains
+ * <p>
+ * Values (e.g. {@link com.regisx001.dQul.logs.domain.LogEntry}, which contains
  * {@link java.time.Instant} fields) are serialized to JSON via a polymorphic
  * Jackson serializer so they deserialize back with the correct concrete type.
- * Keys are stored as prefixed strings ({@code dqul-logs:<cache>:<key>}) so cache
+ * Keys are stored as prefixed strings ({@code dqul-logs:<cache>:<key>}) so
+ * cache
  * namespaces and cache generations are easy to inspect and evict in Redis.
  */
 @Configuration
@@ -55,8 +57,7 @@ public class CacheConfig {
         ObjectMapper cacheMapper = objectMapper.copy();
         cacheMapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
 
-        GenericJackson2JsonRedisSerializer valueSerializer =
-                new GenericJackson2JsonRedisSerializer(cacheMapper);
+        GenericJackson2JsonRedisSerializer valueSerializer = new GenericJackson2JsonRedisSerializer(cacheMapper);
 
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(DEFAULT_TTL)
@@ -87,9 +88,8 @@ public class CacheConfig {
             RedisConnectionFactory connectionFactory,
             RedisCacheConfiguration defaultConfiguration,
             RedisCacheManagerBuilderCustomizer customizer) {
-        RedisCacheManager.RedisCacheManagerBuilder builder =
-                RedisCacheManager.builder(connectionFactory)
-                        .cacheDefaults(defaultConfiguration);
+        RedisCacheManager.RedisCacheManagerBuilder builder = RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(defaultConfiguration);
         customizer.customize(builder);
         return builder.build();
     }

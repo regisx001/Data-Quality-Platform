@@ -9,8 +9,11 @@ import java.util.List;
 /**
  * Cache-friendly page of query results.
  *
- * <p>This is deliberately NOT a Spring {@link org.springframework.data.domain.Page}
- * / {@code PageImpl}, because that polymorphic wrapper does not round-trip cleanly
+ * <p>
+ * This is deliberately NOT a Spring
+ * {@link org.springframework.data.domain.Page}
+ * / {@code PageImpl}, because that polymorphic wrapper does not round-trip
+ * cleanly
  * through Redis JSON serialization (its type id is denied by the configured
  * {@code PolymorphicTypeValidator}, causing
  * {@code SerializationException} on cache reads). Instead we cache just the
