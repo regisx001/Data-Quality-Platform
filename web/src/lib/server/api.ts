@@ -38,6 +38,14 @@ export {
 	deleteDataset as deleteDatasetEntity,
 } from "./api/dataset";
 
+export {
+	queryLogs,
+	getLogById,
+	getLogStats,
+	getLogAnalytics,
+	purgeLogs,
+} from "./api/logs";
+
 export type {
 	Datasource,
 	DatasourceStatus,
@@ -47,3 +55,24 @@ export type {
 	ConnectionTestResult,
 	DatasetDescriptor,
 } from "./api/datasource";
+
+export type {
+	LogEntry,
+	LogPageResponse,
+	LogQueryParams,
+	LogStats,
+	LogAnalytics,
+	TimeSeriesBucket,
+	AnalyticsQueryParams,
+	PurgeResult,
+	ServiceMetrics,
+	CategoryMetrics,
+	EndpointMetrics,
+	HttpMetrics,
+	LatencyMetrics,
+	ErrorSignature,
+	TraceMetrics,
+	UserMetrics,
+} from "./api/logs";
+
+

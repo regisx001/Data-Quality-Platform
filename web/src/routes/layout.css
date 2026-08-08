@@ -57,6 +57,13 @@
 	--status-disabled: oklch(0.70 0.16 75);
 	--status-archived: oklch(0.55 0.01 260);
 
+	/* Chart Palette Tokens */
+	--chart-1: oklch(0.60 0.18 250);
+	--chart-2: oklch(0.65 0.17 160);
+	--chart-3: oklch(0.70 0.16 70);
+	--chart-4: oklch(0.62 0.20 310);
+	--chart-5: oklch(0.64 0.18 25);
+
 	/* Inter Font Family Application-Wide */
 	--font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	--font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
@@ -117,9 +124,21 @@
 	--status-registered: oklch(0.70 0.16 230);
 	--status-disabled: oklch(0.75 0.16 75);
 	--status-archived: oklch(0.60 0.01 260);
+
+	/* Dark Chart Palette Tokens */
+	--chart-1: oklch(0.65 0.18 250);
+	--chart-2: oklch(0.70 0.17 160);
+	--chart-3: oklch(0.75 0.16 70);
+	--chart-4: oklch(0.68 0.20 310);
+	--chart-5: oklch(0.70 0.18 25);
 }
 
 @theme inline {
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);

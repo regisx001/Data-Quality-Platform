@@ -1,4 +1,4 @@
-import { apiFetchAuth, apiFetchAuthRaw, type ApiResult } from "./client";
+import { apiFetchAuth, apiFetchAuthRaw, parseApiError, type ApiResult } from "./client";
 
 // ── Types ───────────────────────────────────────────────────────────────
 

@@ -34,7 +34,15 @@
 						</Breadcrumb.Item>
 						<Breadcrumb.Separator class="hidden md:block" />
 						<Breadcrumb.Item>
-							<Breadcrumb.Page>Datasource Management</Breadcrumb.Page>
+							<Breadcrumb.Page>
+								{page.url.pathname.startsWith("/logs/table")
+									? "Log Explorer Table"
+									: page.url.pathname.startsWith("/logs")
+										? "Observability & Analytics"
+										: page.url.pathname.startsWith("/settings")
+											? "Settings"
+											: "Datasource Management"}
+							</Breadcrumb.Page>
 						</Breadcrumb.Item>
 					</Breadcrumb.List>
 				</Breadcrumb.Root>
