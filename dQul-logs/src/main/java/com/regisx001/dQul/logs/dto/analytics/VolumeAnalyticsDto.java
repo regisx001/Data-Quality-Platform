@@ -22,7 +22,10 @@ public class VolumeAnalyticsDto {
     private long maxLogsInBucket;
     private long minLogsInBucket;
 
-    /** Ordered buckets: each holds the bucket label (e.g. "2026-08-08T10:00:00Z") and count. */
+    /**
+     * Ordered buckets: each holds the bucket label (e.g. "2026-08-08T10:00:00Z")
+     * and count.
+     */
     private List<VolumeBucket> timeSeries;
 
     @Data

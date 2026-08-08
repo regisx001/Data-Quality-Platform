@@ -34,7 +34,9 @@ public class LevelAnalyticsDto {
     /** Combined (error + fatal) / total, expressed as a percentage (0-100). */
     private double errorRatePercentage;
 
-    /** Combined (warn + error + fatal) / total, expressed as a percentage (0-100). */
+    /**
+     * Combined (warn + error + fatal) / total, expressed as a percentage (0-100).
+     */
     private double warnPlusRatePercentage;
 
     private List<LevelDistribution> distribution;

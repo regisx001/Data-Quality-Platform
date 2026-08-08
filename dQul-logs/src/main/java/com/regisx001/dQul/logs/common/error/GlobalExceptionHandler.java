@@ -36,8 +36,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleConstraintViolation(
             ConstraintViolationException ex, HttpServletRequest request) {
         Map<String, String> fieldErrors = new HashMap<>();
-        ex.getConstraintViolations().forEach(cv ->
-                fieldErrors.put(cv.getPropertyPath().toString(), cv.getMessage()));
+        ex.getConstraintViolations().forEach(cv -> fieldErrors.put(cv.getPropertyPath().toString(), cv.getMessage()));
         return build(HttpStatus.BAD_REQUEST, "Parameter validation failed", request, fieldErrors);
     }
 

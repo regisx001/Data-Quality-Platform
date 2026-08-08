@@ -21,7 +21,8 @@ import java.util.stream.Collectors;
  * Default {@link LogAnalyticsService} that loads the filtered time window into
  * memory and aggregates it across the universal observability dimensions.
  *
- * <p>Deliberately bounded: the window is capped ({@link #MAX_ROWS}) so a single
+ * <p>
+ * Deliberately bounded: the window is capped ({@link #MAX_ROWS}) so a single
  * analytics request cannot OOM the JVM. For unbounded windows prefer a
  * time-bucketing (downsampling) strategy rather than raw custom SQL per metric.
  */
@@ -360,7 +361,8 @@ public class DefaultLogAnalyticsService implements LogAnalyticsService {
             return null;
         }
         String method = e.getHttpMethod() == null || e.getHttpMethod().isBlank()
-                ? "ANY" : e.getHttpMethod().trim().toUpperCase();
+                ? "ANY"
+                : e.getHttpMethod().trim().toUpperCase();
         return method + "\u0001" + e.getPath();
     }
 

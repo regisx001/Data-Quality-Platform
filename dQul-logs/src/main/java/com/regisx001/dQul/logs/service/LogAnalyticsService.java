@@ -8,7 +8,8 @@ import com.regisx001.dQul.logs.dto.analytics.LogAnalyticsRequest;
  * across the universal observability dimensions (volume, log level, service,
  * category, HTTP, latency, error signature, trace, user).
  *
- * <p>Implementations are expected to be pure read-only aggregations over a time
+ * <p>
+ * Implementations are expected to be pure read-only aggregations over a time
  * window and safe to cache. The endpoint contract is deliberately small so
  * subsystem-specific dimensions can be layered on top via {@code metadata}
  * without altering this interface.
