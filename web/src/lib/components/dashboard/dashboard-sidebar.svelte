@@ -5,6 +5,7 @@
 	import { enhance } from "$app/forms";
 	import Database from "@lucide/svelte/icons/database";
 	import Settings from "@lucide/svelte/icons/settings";
+	import Activity from "@lucide/svelte/icons/activity";
 	import LogOut from "@lucide/svelte/icons/log-out";
 	import User from "@lucide/svelte/icons/user";
 	import Layers from "@lucide/svelte/icons/layers";
@@ -29,6 +30,12 @@
 			url: "/datasources",
 			icon: Database,
 			active: currentPath.startsWith("/datasources")
+		},
+		{
+			title: "Logs & Analytics",
+			url: "/logs",
+			icon: Activity,
+			active: currentPath.startsWith("/logs")
 		},
 		{
 			title: "Settings",
