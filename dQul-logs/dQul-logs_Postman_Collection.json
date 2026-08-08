@@ -457,6 +457,100 @@
             ]
         },
         {
+            "name": "Get Log Analytics",
+            "description": "Aggregate the log store into a structured analytics model across the universal observability dimensions: volume, log level, service, category, HTTP, latency, error signatures, traces, and users.\n\nTime bounds are ISO-8601 instants (from/to, e.g. 2026-08-08T09:00:00Z); granularity is an ISO-8601 duration (default PT1H) controlling the volume time-series buckets. Optional filters (serviceName, category, traceId) narrow the window. Invalid from/to or granularity return 400 with the ApiError envelope.",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/logs/analytics?granularity=PT1H&serviceName=dQul-validation",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "logs",
+                        "analytics"
+                    ],
+                    "query": [
+                        {
+                            "key": "from",
+                            "value": "",
+                            "description": "Window start as ISO-8601 instant (inclusive). Leave blank for default (now - 24h)."
+                        },
+                        {
+                            "key": "to",
+                            "value": "",
+                            "description": "Window end as ISO-8601 instant (inclusive). Leave blank for default (now)."
+                        },
+                        {
+                            "key": "granularity",
+                            "value": "PT1H",
+                            "description": "ISO-8601 duration for volume time-series buckets, e.g. PT1M, PT1H, PT24H."
+                        },
+                        {
+                            "key": "serviceName",
+                            "value": "dQul-validation",
+                            "description": "Optional: restrict to exact service name (case-insensitive)."
+                        },
+                        {
+                            "key": "category",
+                            "value": "",
+                            "description": "Optional: restrict to exact category (case-insensitive)."
+                        },
+                        {
+                            "key": "traceId",
+                            "value": "",
+                            "description": "Optional: restrict to exact trace ID."
+                        }
+                    ]
+                }
+            },
+            "response": [
+                {
+                    "name": "200 OK - analytics envelope",
+                    "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/logs/analytics?granularity=PT1H",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "logs",
+                                "analytics"
+                            ],
+                            "query": [
+                                {
+                                    "key": "granularity",
+                                    "value": "PT1H"
+                                }
+                            ]
+                        }
+                    },
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n  \"from\": \"2026-08-07T10:47:27.688Z\",\n  \"to\": \"2026-08-08T10:47:27.688Z\",\n  \"totalLogs\": 543,\n  \"volume\": {\n    \"logsPerSecond\": 0.006,\n    \"logsPerMinute\": 0.377,\n    \"maxLogsInBucket\": 61,\n    \"minLogsInBucket\": 14,\n    \"timeSeries\": [\n      { \"bucket\": \"2026-08-07T10:00:00Z\", \"count\": 24 },\n      { \"bucket\": \"2026-08-08T10:00:00Z\", \"count\": 38 }\n    ]\n  },\n  \"levels\": {\n    \"infoCount\": 289,\n    \"debugCount\": 18,\n    \"traceCount\": 33,\n    \"warnCount\": 116,\n    \"errorCount\": 82,\n    \"fatalCount\": 5,\n    \"infoRatio\": 0.5322,\n    \"debugRatio\": 0.0331,\n    \"traceRatio\": 0.0608,\n    \"warnRatio\": 0.2136,\n    \"errorRatio\": 0.151,\n    \"fatalRatio\": 0.0092,\n    \"errorRatePercentage\": 16.02,\n    \"warnPlusRatePercentage\": 37.38,\n    \"distribution\": [\n      { \"level\": \"TRACE\", \"count\": 33, \"percentage\": 6.08 },\n      { \"level\": \"DEBUG\", \"count\": 18, \"percentage\": 3.31 },\n      { \"level\": \"INFO\", \"count\": 289, \"percentage\": 53.22 },\n      { \"level\": \"WARN\", \"count\": 116, \"percentage\": 21.36 },\n      { \"level\": \"ERROR\", \"count\": 82, \"percentage\": 15.1 },\n      { \"level\": \"FATAL\", \"count\": 5, \"percentage\": 0.92 }\n    ]\n  },\n  \"services\": [\n    {\n      \"serviceName\": \"dQul-validation\",\n      \"totalLogs\": 212,\n      \"logSharePercentage\": 39.04,\n      \"errorCount\": 41,\n      \"fatalCount\": 2,\n      \"warnCount\": 52,\n      \"errorRatePercentage\": 20.28,\n      \"averageLatencyMs\": 1760.0,\n      \"p95LatencyMs\": 4120.0,\n      \"p99LatencyMs\": 8900.0,\n      \"maxLatencyMs\": 12900.0\n    }\n  ],\n  \"categories\": [\n    {\n      \"category\": \"VALIDATION\",\n      \"totalLogs\": 201,\n      \"logSharePercentage\": 37.01,\n      \"errorCount\": 39,\n      \"fatalCount\": 1,\n      \"errorRatePercentage\": 19.9,\n      \"averageLatencyMs\": 1705.0,\n      \"p95LatencyMs\": 3900.0,\n      \"p99LatencyMs\": 8600.0\n    }\n  ],\n  \"http\": {\n    \"totalRequests\": 424,\n    \"count2xx\": 310,\n    \"count3xx\": 12,\n    \"count4xx\": 72,\n    \"count5xx\": 30,\n    \"rate2xx\": 73.11,\n    \"rate3xx\": 2.83,\n    \"rate4xx\": 16.98,\n    \"rate5xx\": 7.08,\n    \"statusCounts\": {\n      \"200\": 310,\n      \"301\": 5,\n      \"302\": 7,\n      \"400\": 42,\n      \"401\": 30,\n      \"500\": 30\n    },\n    \"methodCounts\": {\n      \"GET\": 211,\n      \"POST\": 143,\n      \"PUT\": 40,\n      \"DELETE\": 30\n    },\n    \"endpoints\": [\n      {\n        \"httpMethod\": \"GET\",\n        \"path\": \"/api/v1/datasets\",\n        \"requestCount\": 120,\n        \"errorCount\": 8,\n        \"errorRatePercentage\": 6.67,\n        \"averageLatencyMs\": 340.0,\n        \"p95LatencyMs\": 980.0,\n        \"p99LatencyMs\": 2100.0,\n        \"maxLatencyMs\": 3400.0\n      }\n    ]\n  },\n  \"latency\": {\n    \"sampleCount\": 424,\n    \"averageMs\": 1840.5,\n    \"medianMs\": 1420.0,\n    \"minMs\": 5.0,\n    \"maxMs\": 12900.0,\n    \"p50Ms\": 1420.0,\n    \"p75Ms\": 2240.0,\n    \"p90Ms\": 3610.0,\n    \"p95Ms\": 5120.0,\n    \"p99Ms\": 8900.0,\n    \"p999Ms\": 12400.0,\n    \"standardDeviationMs\": 2410.3,\n    \"varianceMs2\": 5811545.1,\n    \"slowRequestCount\": 58,\n    \"slowRequestPercentage\": 13.68\n  },\n  \"errorSignatures\": [\n    {\n      \"signature\": \"connection refused to <num>.<num>.<num>.<num>:<num>\",\n      \"count\": 22,\n      \"percentage\": 25.29,\n      \"firstOccurrenceEpochMillis\": 1754464047688,\n      \"lastOccurrenceEpochMillis\": 1754550447688,\n      \"exampleMessage\": \"connection refused to 10.0.0.5:5432\",\n      \"exampleStackTrace\": \"java.net.ConnectException: ...\"\n    }\n  ],\n  \"traces\": {\n    \"uniqueTraces\": 96,\n    \"averageLogsPerTrace\": 3.7,\n    \"averageDurationMs\": 1240.0,\n    \"medianDurationMs\": 986.0,\n    \"p95DurationMs\": 4820.0,\n    \"p99DurationMs\": 10300.0,\n    \"failedTraces\": 12,\n    \"traceErrorRatePercentage\": 12.5\n  },\n  \"users\": {\n    \"u-1042\": {\n      \"userId\": \"u-1042\",\n      \"userEmail\": \"engineer@example.com\",\n      \"totalLogs\": 87,\n      \"errorCount\": 9,\n      \"errorRatePercentage\": 10.34,\n      \"averageLatencyMs\": 1780.0,\n      \"p95LatencyMs\": 4200.0\n    }\n  }\n}"
+                }
+            ]
+        },
+        {
             "name": "Purge Logs",
             "description": "Delete log entries older than N days (1..365). Default is 30 days. This is destructive.",
             "request": {
