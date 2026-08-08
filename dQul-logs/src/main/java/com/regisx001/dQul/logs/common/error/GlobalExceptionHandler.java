@@ -36,14 +36,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleConstraintViolation(
             ConstraintViolationException ex, HttpServletRequest request) {
         Map<String, String> fieldErrors = new HashMap<>();
-        ex.getConstraintViolations().forEach(cv ->
-                fieldErrors.put(cv.getPropertyPath().toString(), cv.getMessage()));
+        ex.getConstraintViolations().forEach(cv -> fieldErrors.put(cv.getPropertyPath().toString(), cv.getMessage()));
         return build(HttpStatus.BAD_REQUEST, "Parameter validation failed", request, fieldErrors);
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

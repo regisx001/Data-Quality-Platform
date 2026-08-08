@@ -3,11 +3,12 @@ package com.regisx001.dQul.logs.controller;
 import com.regisx001.dQul.logs.domain.LogEntry;
 import com.regisx001.dQul.logs.dto.LogQueryResultDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
+import com.regisx001.dQul.logs.dto.analytics.LogAnalyticsDto;
+import com.regisx001.dQul.logs.service.LogAnalyticsService;
 import com.regisx001.dQul.logs.service.LogService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,6 +34,9 @@ class LogControllerTest {
 
         @MockitoBean
         private LogService logService;
+
+        @MockitoBean
+        private LogAnalyticsService logAnalyticsService;
 
         @Test
         void queryLogs_returnsPage() throws Exception {
@@ -129,6 +133,29 @@ class LogControllerTest {
         @Test
         void purgeLogs_invalidDays_returns400() throws Exception {
                 mockMvc.perform(delete("/api/v1/logs/purge").param("days", "0"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400));
+        }
+
+        @Test
+        void getAnalytics_returnsEnvelope() throws Exception {
+                LogAnalyticsDto result = LogAnalyticsDto.builder()
+                                .totalLogs(25)
+                                .build();
+                when(logAnalyticsService.analyze(any())).thenReturn(result);
+
+                mockMvc.perform(get("/api/v1/logs/analytics")
+                                .param("granularity", "PT1H")
+                                .param("serviceName", "svc"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.totalLogs").value(25));
+
+                verify(logAnalyticsService).analyze(any());
+        }
+
+        @Test
+        void getAnalytics_invalidFrom_returns400() throws Exception {
+                mockMvc.perform(get("/api/v1/logs/analytics").param("from", "not-a-time"))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.status").value(400));
         }
