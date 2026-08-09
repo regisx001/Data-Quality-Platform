@@ -16,7 +16,8 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>
  * Captures method, path, response status, duration, client IP and user agent.
- * Runs for all requests (registered as a {@link Component} servlet filter, before
+ * Runs for all requests (registered as a {@link Component} servlet filter,
+ * before
  * the dispatcher), so it is independent of Spring Security filter ordering.
  *
  * <p>
