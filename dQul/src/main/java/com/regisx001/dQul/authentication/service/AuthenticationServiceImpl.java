@@ -11,7 +11,6 @@ import com.regisx001.dQul.authentication.dto.AuthenticationResponse;
 import com.regisx001.dQul.authentication.dto.RegisterRequest;
 import com.regisx001.dQul.common.domain.User;
 import com.regisx001.dQul.common.repository.UserRepository;
-import com.regisx001.dQul.authentication.service.AuthenticationService;
 import com.regisx001.dQul.security.jwt.JwtService;
 import com.regisx001.dQul.common.service.UserService;
 
