@@ -1,0 +1,31 @@
+name: dQul-logs CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'dQul-logs/**'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'dQul-logs/**'
+
+jobs:
+  build-test:
+    name: Build & test (Java 21)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dQul-logs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build & test with Maven
+        run: ./mvnw -B --no-transfer-progress test
