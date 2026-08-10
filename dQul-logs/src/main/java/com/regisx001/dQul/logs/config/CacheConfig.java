@@ -36,6 +36,9 @@ public class CacheConfig {
     /** Cache for the aggregated statistics dashboard payload. */
     public static final String CACHE_LOG_STATS = "logStats";
 
+    /** Cache for the full aggregated analytics dashboard envelope. */
+    public static final String CACHE_LOG_ANALYTICS = "logAnalytics";
+
     /**
      * Cache for paginated query results keyed by the normalized (search, level,
      * serviceName, category, traceId, page, size) tuple.
@@ -75,6 +78,7 @@ public class CacheConfig {
         return builder -> builder
                 .withCacheConfiguration(CACHE_LOG_BY_ID, defaultConfiguration.entryTtl(Duration.ofMinutes(30)))
                 .withCacheConfiguration(CACHE_LOG_STATS, defaultConfiguration.entryTtl(Duration.ofSeconds(30)))
+                .withCacheConfiguration(CACHE_LOG_ANALYTICS, defaultConfiguration.entryTtl(Duration.ofMinutes(1)))
                 .withCacheConfiguration(CACHE_LOG_QUERY, defaultConfiguration.entryTtl(DEFAULT_TTL));
     }
 

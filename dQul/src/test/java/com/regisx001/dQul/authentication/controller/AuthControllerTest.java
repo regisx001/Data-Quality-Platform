@@ -25,7 +25,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.regisx001.dQul.authentication.dto.AuthenticationRequest;
 import com.regisx001.dQul.authentication.dto.AuthenticationResponse;
 import com.regisx001.dQul.authentication.dto.RegisterRequest;
+import com.regisx001.dQul.authentication.exception.InvalidCredentialsException;
+import com.regisx001.dQul.authentication.exception.UserDeactivatedException;
 import com.regisx001.dQul.common.domain.User;
+import com.regisx001.dQul.common.exception.GlobalExceptionHandler;
 import com.regisx001.dQul.common.service.LogsProducer;
 import com.regisx001.dQul.authentication.service.AuthenticationService;
 
@@ -58,7 +61,7 @@ class AuthControllerTest {
                                 .role("USER")
                                 .build();
 
-                AuthController controller = new AuthController(authenticationService, logsProducer);
+                AuthController controller = new AuthController(authenticationService, logsProducer, objectMapper);
 
                 // Custom resolver to return mockUser for @AuthenticationPrincipal
                 HandlerMethodArgumentResolver authPrincipalResolver = new HandlerMethodArgumentResolver() {
@@ -76,6 +79,7 @@ class AuthControllerTest {
                 };
 
                 mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                                .setControllerAdvice(new GlobalExceptionHandler())
                                 .setCustomArgumentResolvers(authPrincipalResolver)
                                 .build();
         }
@@ -170,7 +174,7 @@ class AuthControllerTest {
                                 .build();
 
                 when(authenticationService.authenticate(any(AuthenticationRequest.class)))
-                                .thenThrow(new IllegalArgumentException("Invalid credentials"));
+                                .thenThrow(new InvalidCredentialsException());
 
                 mockMvc.perform(post(BASE_URL + "/login")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -180,20 +184,20 @@ class AuthControllerTest {
         }
 
         @Test
-        void login_shouldReturn401OnDeactivatedUser() throws Exception {
+        void login_shouldReturn403OnDeactivatedUser() throws Exception {
                 AuthenticationRequest request = AuthenticationRequest.builder()
                                 .login("inactive")
                                 .password("pass")
                                 .build();
 
                 when(authenticationService.authenticate(any(AuthenticationRequest.class)))
-                                .thenThrow(new IllegalStateException("User account is deactivated"));
+                                .thenThrow(new UserDeactivatedException());
 
                 mockMvc.perform(post(BASE_URL + "/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isUnauthorized())
-                                .andExpect(jsonPath("$.status").value(401));
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.status").value(403));
         }
 
         // ── verify ──────────────────────────────────────────────────────────
