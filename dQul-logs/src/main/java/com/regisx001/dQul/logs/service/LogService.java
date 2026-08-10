@@ -31,7 +31,7 @@ public class LogService {
     private final LogEntryRepository logEntryRepository;
 
     @Transactional
-    @CacheEvict(cacheNames = { CacheConfig.CACHE_LOG_STATS, CacheConfig.CACHE_LOG_QUERY }, allEntries = true)
+    @CacheEvict(cacheNames = { CacheConfig.CACHE_LOG_STATS, CacheConfig.CACHE_LOG_ANALYTICS, CacheConfig.CACHE_LOG_QUERY }, allEntries = true)
     public LogEntry saveLog(LogIngestionDto dto) {
         return logEntryRepository.save(normalize(dto));
     }
@@ -175,6 +175,7 @@ public class LogService {
     @Transactional
     @CacheEvict(cacheNames = {
             CacheConfig.CACHE_LOG_STATS,
+            CacheConfig.CACHE_LOG_ANALYTICS,
             CacheConfig.CACHE_LOG_QUERY,
             CacheConfig.CACHE_LOG_BY_ID
     }, allEntries = true)
