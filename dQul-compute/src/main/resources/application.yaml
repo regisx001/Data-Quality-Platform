@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: dQul-compute
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9093}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: dqul-compute-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:7379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3s
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: ${CACHE_TTL:5m}
+      cache-null-values: false
+      key-prefix: dqul-compute
+      use-key-prefix: true
+
+spark:
+  enabled: ${SPARK_ENABLED:true}
+  uiEnabled: ${SPARK_UI_ENABLED:false}
+  master: ${SPARK_MASTER:spark://localhost:7077}
+  appName: ${SPARK_APP_NAME:dQul-compute-service}
+  driverHost: ${SPARK_DRIVER_HOST:host.docker.internal}
+  driverBindAddress: ${SPARK_DRIVER_BIND_ADDRESS:0.0.0.0}
+  driverMemory: ${SPARK_DRIVER_MEMORY:1g}
+  executorMemory: ${SPARK_EXECUTOR_MEMORY:1g}
+  executorCores: ${SPARK_EXECUTOR_CORES:2}
+  defaultParallelism: ${SPARK_DEFAULT_PARALLELISM:4}
+  shufflePartitions: ${SPARK_SHUFFLE_PARTITIONS:4}
+
+server:
+  port: 7002
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
