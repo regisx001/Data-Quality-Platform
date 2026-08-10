@@ -119,26 +119,30 @@ services:
   #     - dqul-network
 
 
-  # spark-master:
-  #   image: apache/spark:latest
-  #   container_name: dqul-spark-master
-  #   # restart: unless-stopped
-  #   command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
-  #   ports:
-  #     - "${SPARK_MASTER_PORT:-7077}:7077"
-  #     - "${SPARK_UI_PORT:-8080}:8080"
-  #   networks:
-  #     - dqul-network
+  spark-master:
+    image: apache/spark:3.5.1
+    container_name: dqul-spark-master
+    # restart: unless-stopped
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${SPARK_MASTER_PORT:-7077}:7077"
+      - "${SPARK_CLUSTER_UI_PORT:-8080}:8080"
+    networks:
+      - dqul-network
 
-  # spark-worker:
-  #   image: apache/spark:latest
-  #   container_name: dqul-spark-worker
-  #   # restart: unless-stopped
-  #   command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
-  #   depends_on:
-  #     - spark-master
-  #   networks:
-  #     - dqul-network
+  spark-worker:
+    image: apache/spark:3.5.1
+    container_name: dqul-spark-worker
+    # restart: unless-stopped
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - spark-master
+    networks:
+      - dqul-network
 
 volumes:
   postgres_data:
