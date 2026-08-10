@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.stereotype.Component;
+// import org.springframework.stereotype.Component;
 
 import com.regisx001.dQul.compute.spark.SparkProvider;
 

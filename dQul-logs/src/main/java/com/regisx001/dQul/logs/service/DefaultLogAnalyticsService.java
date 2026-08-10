@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 public class DefaultLogAnalyticsService implements LogAnalyticsService {
 
     /** Safety cap on rows loaded for a single analytics request. */
+
+    //
     private static final int MAX_ROWS = 100_000;
 
     private final LogEntryRepository logEntryRepository;
