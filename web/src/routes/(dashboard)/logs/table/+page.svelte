@@ -29,11 +29,11 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let activeTab = $state(data.queryParams.level || "ALL");
-	let searchQuery = $state(data.queryParams.search || "");
-	let serviceFilter = $state(data.queryParams.serviceName || "ALL");
-	let categoryFilter = $state(data.queryParams.category || "ALL");
-	let traceIdInput = $state(data.queryParams.traceId || "");
+	let activeTab = $state($state.snapshot(data.queryParams.level) || "ALL");
+	let searchQuery = $state($state.snapshot(data.queryParams.search) || "");
+	let serviceFilter = $state($state.snapshot(data.queryParams.serviceName) || "ALL");
+	let categoryFilter = $state($state.snapshot(data.queryParams.category) || "ALL");
+	let traceIdInput = $state($state.snapshot(data.queryParams.traceId) || "");
 
 	// Log detail modal state
 	let selectedLog = $state<LogEntry | null>(null);

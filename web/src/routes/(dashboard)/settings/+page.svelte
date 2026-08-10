@@ -17,7 +17,7 @@
 	import CheckCircle from "@lucide/svelte/icons/check-circle";
 	import AlertCircle from "@lucide/svelte/icons/alert-circle";
 	import Edit from "@lucide/svelte/icons/edit";
-	import { mode, setMode } from "mode-watcher";
+	import { userPrefersMode, setMode } from "mode-watcher";
 	import type { PageData, ActionData } from "./$types";
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -320,7 +320,7 @@
 							<button
 								type="button"
 								class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all cursor-pointer
-								{mode.current === 'light'
+								{userPrefersMode.current === 'light'
 									? 'border-primary bg-primary/5'
 									: 'border-border hover:border-muted-foreground/30 hover:bg-accent/50'}"
 								onclick={() => setMode("light")}
@@ -336,7 +336,7 @@
 							<button
 								type="button"
 								class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all cursor-pointer
-								{mode.current === 'dark'
+								{userPrefersMode.current === 'dark'
 									? 'border-primary bg-primary/5'
 									: 'border-border hover:border-muted-foreground/30 hover:bg-accent/50'}"
 								onclick={() => setMode("dark")}
@@ -352,7 +352,7 @@
 							<button
 								type="button"
 								class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all cursor-pointer
-								{mode.current === 'system'
+								{userPrefersMode.current === 'system'
 									? 'border-primary bg-primary/5'
 									: 'border-border hover:border-muted-foreground/30 hover:bg-accent/50'}"
 								onclick={() => setMode("system")}
@@ -369,7 +369,7 @@
 						<p class="text-[11px] text-muted-foreground pt-1">
 							Current mode: <span
 								class="font-semibold text-foreground capitalize"
-								>{mode.current}</span
+								>{userPrefersMode.current}</span
 							>
 						</p>
 					</Card.Content>

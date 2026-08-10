@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.regisx001.dQul.common.domain.User;
+import com.regisx001.dQul.common.exception.GlobalExceptionHandler;
 import com.regisx001.dQul.common.service.UserService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -42,7 +43,9 @@ class UserControllerTest {
     @BeforeEach
     void setUp() {
         UserController controller = new UserController(userService);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
 
         sampleId = UUID.randomUUID();
         sampleUser = User.builder()

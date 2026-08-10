@@ -73,6 +73,7 @@ export type {
 	ErrorSignature,
 	TraceMetrics,
 	UserMetrics,
+	LevelDistribution,
 } from "./api/logs";
 
 

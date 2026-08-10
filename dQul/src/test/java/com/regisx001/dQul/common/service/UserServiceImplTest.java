@@ -16,9 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.regisx001.dQul.common.domain.User;
+import com.regisx001.dQul.common.exception.UserAlreadyExistsException;
+import com.regisx001.dQul.common.exception.UserNotFoundException;
 import com.regisx001.dQul.common.repository.UserRepository;
-
-import jakarta.persistence.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
@@ -80,7 +80,7 @@ class UserServiceImplTest {
     void createUser_shouldThrowWhenUsernameTaken() {
         when(userRepository.existsByUsername("existing")).thenReturn(true);
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        UserAlreadyExistsException ex = assertThrows(UserAlreadyExistsException.class,
                 () -> userService.createUser("existing", "e@example.com",
                         "pass", "Existing", "USER"));
 
@@ -95,7 +95,7 @@ class UserServiceImplTest {
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
         when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        UserAlreadyExistsException ex = assertThrows(UserAlreadyExistsException.class,
                 () -> userService.createUser("newuser", "taken@example.com",
                         "pass", "New", "USER"));
 
@@ -119,7 +119,7 @@ class UserServiceImplTest {
     void getUserById_shouldThrowWhenNotFound() {
         when(userRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class,
+        assertThrows(UserNotFoundException.class,
                 () -> userService.getUserById(UUID.randomUUID()));
     }
 
@@ -138,7 +138,7 @@ class UserServiceImplTest {
     void getUserByUsername_shouldThrowWhenNotFound() {
         when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class,
+        assertThrows(UserNotFoundException.class,
                 () -> userService.getUserByUsername("unknown"));
     }
 
@@ -157,7 +157,7 @@ class UserServiceImplTest {
     void getUserByEmail_shouldThrowWhenNotFound() {
         when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class,
+        assertThrows(UserNotFoundException.class,
                 () -> userService.getUserByEmail("unknown@example.com"));
     }
 
@@ -205,7 +205,7 @@ class UserServiceImplTest {
         when(userRepository.findById(sampleId)).thenReturn(Optional.of(sampleUser));
         when(userRepository.existsByEmail("dup@example.com")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(UserAlreadyExistsException.class,
                 () -> userService.updateUser(sampleId, "dup@example.com", null, null));
     }
 
@@ -224,7 +224,7 @@ class UserServiceImplTest {
     void deleteUser_shouldThrowWhenNotFound() {
         when(userRepository.existsById(any(UUID.class))).thenReturn(false);
 
-        assertThrows(EntityNotFoundException.class,
+        assertThrows(UserNotFoundException.class,
                 () -> userService.deleteUser(UUID.randomUUID()));
     }
 

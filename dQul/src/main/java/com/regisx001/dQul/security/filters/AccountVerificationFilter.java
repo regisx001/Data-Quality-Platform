@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.regisx001.dQul.common.responses.ApiErrorResponse;
 import com.regisx001.dQul.common.domain.User;
 import com.regisx001.dQul.common.repository.UserRepository;
@@ -28,7 +30,9 @@ import java.util.Arrays;
 public class AccountVerificationFilter extends OncePerRequestFilter {
 
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private final List<String> excludedPaths = Arrays.asList(
             "/api/v1/auth/login",

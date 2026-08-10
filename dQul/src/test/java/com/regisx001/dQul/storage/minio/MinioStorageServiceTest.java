@@ -13,6 +13,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.regisx001.dQul.storage.exception.EmptyFileException;
+
 import io.minio.MinioClient;
 
 class MinioStorageServiceTest {
@@ -54,6 +56,6 @@ class MinioStorageServiceTest {
 
         MockMultipartFile emptyFile = new MockMultipartFile("file", "", "text/csv", new byte[0]);
 
-        assertThrows(IllegalArgumentException.class, () -> service.uploadCsvFile(emptyFile));
+        assertThrows(EmptyFileException.class, () -> service.uploadCsvFile(emptyFile));
     }
 }

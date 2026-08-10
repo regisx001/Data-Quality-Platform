@@ -17,6 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.regisx001.dQul.authentication.dto.AuthenticationRequest;
 import com.regisx001.dQul.authentication.dto.AuthenticationResponse;
 import com.regisx001.dQul.authentication.dto.RegisterRequest;
+import com.regisx001.dQul.authentication.exception.InvalidCredentialsException;
+import com.regisx001.dQul.authentication.exception.UserDeactivatedException;
 import com.regisx001.dQul.common.domain.User;
 import com.regisx001.dQul.common.repository.UserRepository;
 import com.regisx001.dQul.security.jwt.JwtService;
@@ -161,7 +163,7 @@ class AuthenticationServiceImplTest {
         when(passwordEncoder.matches("wrongPassword", sampleUser.getPasswordHash()))
                 .thenReturn(false);
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidCredentialsException.class,
                 () -> authService.authenticate(request));
     }
 
@@ -177,7 +179,7 @@ class AuthenticationServiceImplTest {
 
         when(userService.getUserByUsername("testuser")).thenReturn(sampleUser);
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(UserDeactivatedException.class,
                 () -> authService.authenticate(request));
     }
 
