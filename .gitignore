@@ -67,7 +67,6 @@ log/
 test-output/
 coverage-reports/
 jacoco.exec
-*.html
 
 # Environment
 .env
