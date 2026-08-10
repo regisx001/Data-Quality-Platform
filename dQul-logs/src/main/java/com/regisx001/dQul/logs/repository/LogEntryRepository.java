@@ -137,7 +137,8 @@ public interface LogEntryRepository extends JpaRepository<LogEntry, UUID>, JpaSp
             @Param("traceId") String traceId);
 
     @Query("SELECT UPPER(TRIM(COALESCE(l.httpMethod, 'ANY'))), l.path, COUNT(l), " +
-           "SUM(CASE WHEN UPPER(l.logLevel) IN ('ERROR', 'FATAL') THEN 1 ELSE 0 END) " +
+           "SUM(CASE WHEN l.statusCode >= 400 THEN 1 ELSE 0 END), " +
+           "AVG(l.executionTimeMs), MAX(l.executionTimeMs) " +
            "FROM LogEntry l " +
            "WHERE l.timestamp >= :fromNorm AND l.timestamp <= :toNorm " +
            "AND (:serviceName IS NULL OR LOWER(l.serviceName) = LOWER(CAST(:serviceName AS string))) " +

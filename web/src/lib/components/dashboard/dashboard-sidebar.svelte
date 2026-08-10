@@ -38,6 +38,12 @@
 			active: currentPath.startsWith("/logs")
 		},
 		{
+			title: "HTTP Telemetry",
+			url: "/http-telemetry",
+			icon: Layers,
+			active: currentPath.startsWith("/http-telemetry")
+		},
+		{
 			title: "Settings",
 			url: "/settings",
 			icon: Settings,
