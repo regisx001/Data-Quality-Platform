@@ -303,6 +303,8 @@ public class SqlAggregatedLogAnalyticsService implements LogAnalyticsService {
             String path = (String) r[1];
             long reqCount = ((Number) r[2]).longValue();
             long errCount = r[3] != null ? ((Number) r[3]).longValue() : 0L;
+            double avgLat = r[4] != null ? ((Number) r[4]).doubleValue() : 0.0;
+            double maxLat = r[5] != null ? ((Number) r[5]).doubleValue() : 0.0;
 
             List<Long> lats = logEntryRepository.findLatencies(fromNorm, toNorm, serviceName, category, traceId, null, null, method, path);
 
@@ -312,10 +314,10 @@ public class SqlAggregatedLogAnalyticsService implements LogAnalyticsService {
                     .requestCount(reqCount)
                     .errorCount(errCount)
                     .errorRatePercentage(round(errCount * 100.0 / Math.max(1, reqCount), 2))
-                    .averageLatencyMs(round(avg(lats), 2))
+                    .averageLatencyMs(round(avgLat, 2))
                     .p95LatencyMs(round(percentile(lats, 95), 2))
                     .p99LatencyMs(round(percentile(lats, 99), 2))
-                    .maxLatencyMs(round(max(lats), 2))
+                    .maxLatencyMs(round(maxLat, 2))
                     .build());
         }
 

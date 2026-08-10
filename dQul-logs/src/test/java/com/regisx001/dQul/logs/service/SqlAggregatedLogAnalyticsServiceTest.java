@@ -76,7 +76,7 @@ class SqlAggregatedLogAnalyticsServiceTest {
                 .thenReturn(methodList);
 
         List<Object[]> endpointList = new ArrayList<>();
-        endpointList.add(new Object[]{"GET", "/api/v1/health", 100L, 20L});
+        endpointList.add(new Object[]{"GET", "/api/v1/health", 100L, 20L, 150.0, 500.0});
         when(repository.aggregateHttpEndpoints(any(), any(), any(), any(), any()))
                 .thenReturn(endpointList);
 

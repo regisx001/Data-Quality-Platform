@@ -5,7 +5,7 @@
 	import { Separator } from "$lib/components/ui/separator/index.js";
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import { page } from "$app/state";
+	import { page, navigating } from "$app/state";
 	import { enhance } from "$app/forms";
 	import User from "@lucide/svelte/icons/user";
 	import Database from "@lucide/svelte/icons/database";
@@ -14,7 +14,15 @@
 	import ChevronDown from "@lucide/svelte/icons/chevron-down";
 
 	let user = $derived(page.data.user);
+	let isNavigating = $derived(navigating.to !== null);
 </script>
+
+<!-- Top Global Navigation Progress Bar -->
+{#if isNavigating}
+	<div class="fixed top-0 left-0 right-0 z-50 h-1 bg-primary/20 overflow-hidden">
+		<div class="h-full bg-primary animate-pulse w-full origin-left transition-all duration-300"></div>
+	</div>
+{/if}
 
 <Sidebar.Provider
 	style="--sidebar-width: calc(var(--spacing) * 72); --header-height: calc(var(--spacing) * 12);"
@@ -39,9 +47,11 @@
 									? "Log Explorer Table"
 									: page.url.pathname.startsWith("/logs")
 										? "Observability & Analytics"
-										: page.url.pathname.startsWith("/settings")
-											? "Settings"
-											: "Datasource Management"}
+										: page.url.pathname.startsWith("/http-telemetry")
+											? "HTTP Telemetry Dashboard"
+											: page.url.pathname.startsWith("/settings")
+												? "Settings"
+												: "Datasource Management"}
 							</Breadcrumb.Page>
 						</Breadcrumb.Item>
 					</Breadcrumb.List>
@@ -143,7 +153,7 @@
 				{/if}
 			</div>
 		</header>
-		<div class="flex flex-1 flex-col overflow-y-auto min-h-0 bg-background/50">
+		<div class={`flex flex-1 flex-col overflow-y-auto min-h-0 bg-background/50 transition-opacity duration-200 ${isNavigating ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
 			{@render children?.()}
 		</div>
 	</Sidebar.Inset>
