@@ -27,8 +27,7 @@ public class ComputeController {
         return ResponseEntity.ok(Map.of(
                 "service", "dQul-compute",
                 "sparkActive", computeService.isSparkActive(),
-                "sparkVersion", computeService.getSparkVersion()
-        ));
+                "sparkVersion", computeService.getSparkVersion()));
     }
 
     @PostMapping("/jobs")
