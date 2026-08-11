@@ -3,7 +3,7 @@ spring:
     name: dQul-compute
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9093}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -15,8 +15,8 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:7379}
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 2s
       connect-timeout: 2s
@@ -38,15 +38,22 @@ spring:
 spark:
   enabled: ${SPARK_ENABLED:true}
   uiEnabled: ${SPARK_UI_ENABLED:false}
-  master: ${SPARK_MASTER:spark://localhost:7077}
+  master: ${SPARK_MASTER:spark://spark-master:7077}
   appName: ${SPARK_APP_NAME:dQul-compute-service}
-  driverHost: ${SPARK_DRIVER_HOST:host.docker.internal}
+  driverHost: ${SPARK_DRIVER_HOST:dqul-compute}
   driverBindAddress: ${SPARK_DRIVER_BIND_ADDRESS:0.0.0.0}
   driverMemory: ${SPARK_DRIVER_MEMORY:1g}
   executorMemory: ${SPARK_EXECUTOR_MEMORY:1g}
   executorCores: ${SPARK_EXECUTOR_CORES:2}
   defaultParallelism: ${SPARK_DEFAULT_PARALLELISM:4}
   shufflePartitions: ${SPARK_SHUFFLE_PARTITIONS:4}
+  jarsPackages: ${SPARK_JARS_PACKAGES:org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.261}
+  s3:
+    endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+    accessKey: ${MINIO_ROOT_USER:minioadmin}
+    secretKey: ${MINIO_ROOT_PASSWORD:minioadmin123}
+    pathStyleAccess: true
+    sslEnabled: false
 
 server:
   port: 7002
