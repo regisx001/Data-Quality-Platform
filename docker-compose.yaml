@@ -95,29 +95,28 @@ services:
 
     networks:
       - dqul-network
-  # kafka-ui:
-  #   image: provectuslabs/kafka-ui:latest
-  #   container_name: dqul-kafka-ui
-  #   # restart: unless-stopped
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: dqul-kafka-ui
+    # restart: unless-stopped
 
-  #   depends_on:
-  #     kafka:
-  #       condition: service_healthy
+    depends_on:
+      kafka:
+        condition: service_healthy
 
-  #   ports:
-  #     - "${KAFKA_UI_PORT:-24001}:8080"
+    ports:
+      - "${KAFKA_UI_PORT:-24001}:8080"
 
-  #   environment:
-  #     KAFKA_CLUSTERS_0_NAME: local
-  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-  #     # Optional — read/write access to the logs DB if you want the UI's SQL console:
-  #     # KAFKA_CLUSTERS_0_SCHEMAREGISTRY:
-  #     # KAFKA_CLUSTERS_0_READONLY: "true"
-  #     DYNAMIC_CONFIG_ENABLED: "true"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      # Optional — read/write access to the logs DB if you want the UI's SQL console:
+      # KAFKA_CLUSTERS_0_SCHEMAREGISTRY:
+      # KAFKA_CLUSTERS_0_READONLY: "true"
+      DYNAMIC_CONFIG_ENABLED: "true"
 
-  #   networks:
-  #     - dqul-network
-
+    networks:
+      - dqul-network
 
   spark-master:
     build:

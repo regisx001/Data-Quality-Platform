@@ -8,10 +8,22 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
-      group-id: dqul-compute-group
+      group-id: ${KAFKA_CONSUMER_GROUP_COMPUTE:dqul-compute-group}
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "*"
+    listener:
+      missing-topics-fatal: false
+
+dqul:
+  kafka:
+    topics:
+      profile-request: ${KAFKA_TOPIC_PROFILE_REQUEST:dqul.dataset.profile.request}
+      profile-result: ${KAFKA_TOPIC_PROFILE_RESULT:dqul.dataset.profile.result}
 
   data:
     redis:
@@ -54,6 +66,7 @@ spark:
     secretKey: ${MINIO_ROOT_PASSWORD:minioadmin123}
     pathStyleAccess: true
     sslEnabled: false
+    results-bucket: ${MINIO_BUCKET:dqul-bucket}
 
 server:
   port: 7002

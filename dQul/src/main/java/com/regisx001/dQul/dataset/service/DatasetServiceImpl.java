@@ -6,7 +6,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import com.regisx001.dQul.compute.dto.DatasetProfileRequest;
+import com.regisx001.dQul.dataset.kafka.ProfileRequestKafkaProducer;
 
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Row;
@@ -23,7 +24,6 @@ import static org.apache.spark.sql.functions.avg;
 import static org.apache.spark.sql.functions.col;
 import static org.apache.spark.sql.functions.count;
 import static org.apache.spark.sql.functions.countDistinct;
-import static org.apache.spark.sql.functions.expr;
 import static org.apache.spark.sql.functions.kurtosis;
 import static org.apache.spark.sql.functions.length;
 import static org.apache.spark.sql.functions.lit;
@@ -54,12 +54,11 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.types.TimestampNTZType;
 import org.apache.spark.sql.types.TimestampType;
 import org.apache.spark.sql.types.VarcharType;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.regisx001.dQul.compute.spark.SparkSessionProvider;
 import com.regisx001.dQul.connector.ConnectorConfig;
 import com.regisx001.dQul.connector.ConnectorFactory;
 import com.regisx001.dQul.connector.DataSourceConnector;
@@ -78,21 +77,22 @@ import com.regisx001.dQul.dataset.repository.DatasetRepository;
 import com.regisx001.dQul.datasource.domain.Datasource;
 import com.regisx001.dQul.storage.minio.MinioStorageService;
 
-import jakarta.persistence.EntityNotFoundException;
-
 @Service
 @Transactional
 public class DatasetServiceImpl implements DatasetService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DatasetServiceImpl.class);
 
+    @Value("${minio.bucket:dqul-bucket}")
+    private String bucketName;
+
     private final DatasetRepository datasetRepository;
     private final DatasetColumnRepository columnRepository;
     private final ColumnProfileRepository profileRepository;
     private final ConnectorFactory connectorFactory;
     private final ObjectMapper objectMapper;
-    private final SparkSessionProvider sparkSessionProvider;
     private final MinioStorageService minioStorageService;
+    private final ProfileRequestKafkaProducer profileRequestKafkaProducer;
 
     public DatasetServiceImpl(
             DatasetRepository datasetRepository,
@@ -100,15 +100,15 @@ public class DatasetServiceImpl implements DatasetService {
             ColumnProfileRepository profileRepository,
             ConnectorFactory connectorFactory,
             ObjectMapper objectMapper,
-            SparkSessionProvider sparkSessionProvider,
-            MinioStorageService minioStorageService) {
+            MinioStorageService minioStorageService,
+            ProfileRequestKafkaProducer profileRequestKafkaProducer) {
         this.datasetRepository = datasetRepository;
         this.columnRepository = columnRepository;
         this.profileRepository = profileRepository;
         this.connectorFactory = connectorFactory;
         this.objectMapper = objectMapper;
-        this.sparkSessionProvider = sparkSessionProvider;
         this.minioStorageService = minioStorageService;
+        this.profileRequestKafkaProducer = profileRequestKafkaProducer;
     }
 
     @Override
@@ -292,8 +292,84 @@ public class DatasetServiceImpl implements DatasetService {
     @Transactional
     public DatasetDetailResponse profileDataset(UUID id) {
         Dataset dataset = resolveDataset(id);
-        profileDatasetPipeline(dataset);
+        try {
+            DatasetProfileRequest request = buildProfileRequest(dataset);
+            profileRequestKafkaProducer.sendProfileRequest(request);
+            log.info("Published async profiling trigger event to Kafka for datasetId={}", dataset.getId());
+        } catch (Exception e) {
+            log.warn(
+                    "Failed to publish async profiling request to Kafka for dataset '{}', fallback to embedded engine: {}",
+                    dataset.getName(), e.getMessage());
+            profileDatasetPipeline(dataset);
+        }
         return mapToDetailResponse(dataset);
+    }
+
+    private DatasetProfileRequest buildProfileRequest(Dataset dataset) {
+        UUID profileId = UUID.randomUUID();
+        Datasource ds = dataset.getDatasource();
+        String dsType = ds != null && ds.getType() != null ? ds.getType().toUpperCase() : "CSV";
+
+        DatasetProfileRequest.DatasetProfileRequestBuilder builder = DatasetProfileRequest.builder()
+                .profileId(profileId)
+                .datasetId(dataset.getId())
+                .requestedAt(LocalDateTime.now());
+
+        if ("POSTGRESQL".equals(dsType) || "POSTGRES".equals(dsType) || "JDBC".equals(dsType)) {
+            builder.sourceType("POSTGRES_JDBC");
+            if (ds != null && ds.getConfigJson() != null) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(ds.getConfigJson());
+                    String host = root.path("host").asText("localhost");
+                    int port = root.path("port").asInt(5432);
+                    String db = root.path("database").asText("postgres");
+                    String user = root.path("username").asText("postgres");
+                    String pwd = root.path("password").asText("");
+                    String schema = root.path("schema").asText("public");
+                    String tableName = dataset.getName();
+
+                    String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, db);
+                    builder.jdbcConfig(DatasetProfileRequest.JdbcConfig.builder()
+                            .url(jdbcUrl)
+                            .dbtable(schema + "." + tableName)
+                            .user(user)
+                            .password(pwd)
+                            .driver("org.postgresql.Driver")
+                            .build());
+                } catch (Exception e) {
+                    log.warn("Failed to parse JDBC config for dataset {}", dataset.getName(), e);
+                }
+            }
+        } else {
+            builder.sourceType("S3_CSV");
+            String s3Uri = null;
+            if (ds != null && ds.getConfigJson() != null) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(ds.getConfigJson());
+                    String filePath = root.has("filePath") ? root.get("filePath").asText(null) : null;
+                    String objectName = root.has("objectName") ? root.get("objectName").asText(null) : null;
+                    String bucket = root.has("bucket") ? root.get("bucket").asText(bucketName) : bucketName;
+
+                    if (objectName != null && !objectName.isBlank()) {
+                        String cleanObj = objectName.startsWith("/") ? objectName.substring(1) : objectName;
+                        s3Uri = "s3a://" + bucket + "/" + cleanObj;
+                    } else if (filePath != null && !filePath.isBlank()) {
+                        java.nio.file.Path p = java.nio.file.Paths.get(filePath);
+                        String fileName = p.getFileName().toString();
+                        s3Uri = "s3a://" + bucket + "/csv/" + fileName;
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to parse CSV config for dataset {}", dataset.getName(), e);
+                }
+            }
+            if (s3Uri == null) {
+                s3Uri = "s3a://" + bucketName + "/csv/" + dataset.getName() + ".csv";
+            }
+            builder.s3aUri(s3Uri);
+            builder.csvOptions(Map.of("header", "true", "inferSchema", "true"));
+        }
+
+        return builder.build();
     }
 
     @Override
@@ -392,13 +468,14 @@ public class DatasetServiceImpl implements DatasetService {
         return reader.read();
     }
 
-    private static final java.util.regex.Pattern UUID_PATTERN =
-            java.util.regex.Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+    private static final java.util.regex.Pattern UUID_PATTERN = java.util.regex.Pattern
+            .compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
     /**
      * Stage 3: Extract Schema Only
      * Extract structural metadata from StructType into DatasetColumn entities,
-     * detecting specific types like UUID, JSON, INT, BIGINT, DOUBLE, DATE, TIMESTAMP, etc.
+     * detecting specific types like UUID, JSON, INT, BIGINT, DOUBLE, DATE,
+     * TIMESTAMP, etc.
      * No statistics. No profiling. Just schema.
      */
     private void stage3ExtractSchemaOnly(org.apache.spark.sql.Dataset<Row> df, Dataset dataset) {
@@ -553,7 +630,8 @@ public class DatasetServiceImpl implements DatasetService {
                     expressions.add(kurtosis(colRef).as(colName + "__kurtosis"));
                 }
                 case STRING -> {
-                    // Stage 7: String Profiling (row count, null count, blank count, distinct count, min/max/avg length)
+                    // Stage 7: String Profiling (row count, null count, blank count, distinct
+                    // count, min/max/avg length)
                     expressions.add(count(when(colRef.isNull(), 1)).as(colName + "__null_count"));
                     expressions.add(count(when(trim(colRef).equalTo(""), 1)).as(colName + "__blank_count"));
                     expressions.add(countDistinct(colRef).as(colName + "__distinct_count"));
@@ -581,7 +659,8 @@ public class DatasetServiceImpl implements DatasetService {
             }
         }
 
-        // Stage 10: Single Spark Aggregation Pass (One optimized physical plan, one scan)
+        // Stage 10: Single Spark Aggregation Pass (One optimized physical plan, one
+        // scan)
         Column firstExpr = expressions.get(0);
         Column[] remainingExprs = expressions.subList(1, expressions.size()).toArray(new Column[0]);
         Row aggResult = df.agg(firstExpr, remainingExprs).first();
@@ -770,6 +849,8 @@ public class DatasetServiceImpl implements DatasetService {
                 .status(dataset.getStatus() != null ? dataset.getStatus()
                         : com.regisx001.dQul.dataset.domain.DatasetStatus.ACTIVE)
                 .rowCount(dataset.getRowCount())
+                .s3aUri(!"CSV".equals(dataset.getType()) ? "UNAVAILABLE"
+                        : String.format("s3a://%s/csv/%s", bucketName, dataset.getName()))
                 .lastDiscovered(dataset.getLastDiscovered())
                 .lastValidated(dataset.getLastValidated())
                 .domain(dataset.getDomain())

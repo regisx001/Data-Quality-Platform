@@ -1,4 +1,4 @@
-package com.regisx001.dQul.common.config;
+package com.regisx001.dQul.compute.config;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,33 +9,11 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaConfig {
 
-    @Value("${dqul.kafka.topics.platform-logs:platform-logs-topic}")
-    private String logsTopic;
-
-    @Value("${dqul.kafka.topics.platform-logs-dlt:platform-logs-topic.DLT}")
-    private String logsDltTopic;
-
     @Value("${dqul.kafka.topics.profile-request:dqul.dataset.profile.request}")
     private String profileRequestTopic;
 
     @Value("${dqul.kafka.topics.profile-result:dqul.dataset.profile.result}")
     private String profileResultTopic;
-
-    @Bean
-    public NewTopic platformLogsTopic() {
-        return TopicBuilder.name(logsTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
-
-    @Bean
-    public NewTopic platformLogsDltTopic() {
-        return TopicBuilder.name(logsDltTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
 
     @Bean
     public NewTopic profileRequestTopic() {

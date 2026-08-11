@@ -35,7 +35,7 @@ export const actions: Actions = {
 
         return {
             success: true,
-            message: "Dataset profiling completed successfully!",
+            message: "Dataset profiling is running and will be notified !",
             dataset: result.data
         };
     },
