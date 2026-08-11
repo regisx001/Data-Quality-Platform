@@ -138,6 +138,15 @@ public class MinioStorageService {
         }
     }
 
+    public InputStream getObjectInputStream(String bucketName, String objectName) throws Exception {
+        return minioClient.getObject(
+                io.minio.GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .build()
+        );
+    }
+
     public record FileUploadResult(
             String filePath,
             String objectName,

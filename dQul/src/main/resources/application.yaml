@@ -34,13 +34,24 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
-      group-id: dqul-logs-group
+      group-id: ${KAFKA_CONSUMER_GROUP_MAIN:dqul-main-group}
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      # JSON deserialization is configured programmatically in KafkaConfig
-      # (uses the application ObjectMapper with java.time support, ignores type headers,
-      #  maps to LogIngestionDto). Do NOT add spring.json.* properties here.
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "*"
+    listener:
+      missing-topics-fatal: false
+
+dqul:
+  kafka:
+    topics:
+      platform-logs: ${KAFKA_TOPIC_PLATFORM_LOGS:platform-logs-topic}
+      platform-logs-dlt: ${KAFKA_TOPIC_PLATFORM_LOGS_DLT:platform-logs-topic.DLT}
+      profile-request: ${KAFKA_TOPIC_PROFILE_REQUEST:dqul.dataset.profile.request}
+      profile-result: ${KAFKA_TOPIC_PROFILE_RESULT:dqul.dataset.profile.result}
 
 security:
   jwt:

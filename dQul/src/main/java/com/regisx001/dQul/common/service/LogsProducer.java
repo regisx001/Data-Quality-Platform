@@ -4,6 +4,7 @@ import com.regisx001.dQul.common.config.KafkaConfig;
 import com.regisx001.dQul.common.dto.LogEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,9 @@ public class LogsProducer {
 
     private final KafkaTemplate<String, LogEvent> kafkaTemplate;
 
+    @Value("${dqul.kafka.topics.platform-logs:platform-logs-topic}")
+    private String logsTopic;
+
     /**
      * Builds a sane default event, fills any fields left {@code null} with
      * publish-time defaults,
@@ -73,12 +77,12 @@ public class LogsProducer {
      */
     public void send(LogEvent event) {
         String key = event.getTraceId();
-        CompletableFuture<SendResult<String, LogEvent>> future = kafkaTemplate.send(KafkaConfig.LOGS_TOPIC, key, event);
+        CompletableFuture<SendResult<String, LogEvent>> future = kafkaTemplate.send(logsTopic, key, event);
 
         future.whenComplete((result, ex) -> {
             if (ex != null) {
                 log.error("Failed to send log event to {} (key={}): {}",
-                        KafkaConfig.LOGS_TOPIC, key, ex.getMessage(), ex);
+                        logsTopic, key, ex.getMessage(), ex);
             } else if (result != null) {
                 log.debug("Sent log event to topic={} partition={} offset={} key={}",
                         result.getRecordMetadata().topic(),

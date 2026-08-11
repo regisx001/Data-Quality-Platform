@@ -92,6 +92,13 @@
 			<version>1.12.261</version>
 		</dependency>
 
+		<!-- PostgreSQL JDBC Driver for JDBC dataset profiling -->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
