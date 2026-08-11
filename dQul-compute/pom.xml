@@ -80,6 +80,18 @@
 			<version>4.0.1</version>
 		</dependency>
 
+		<!-- Apache Hadoop AWS for S3 / S3A (MinIO) filesystem support -->
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-aws</artifactId>
+			<version>3.3.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk-bundle</artifactId>
+			<version>1.12.261</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>

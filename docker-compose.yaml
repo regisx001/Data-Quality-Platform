@@ -120,7 +120,10 @@ services:
 
 
   spark-master:
-    image: apache/spark:3.5.1
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    image: dqul-spark:3.5.1-s3
     container_name: dqul-spark-master
     # restart: unless-stopped
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -129,11 +132,16 @@ services:
     ports:
       - "${SPARK_MASTER_PORT:-7077}:7077"
       - "${SPARK_CLUSTER_UI_PORT:-8080}:8080"
+    depends_on:
+      - minio
     networks:
       - dqul-network
 
   spark-worker:
-    image: apache/spark:3.5.1
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    image: dqul-spark:3.5.1-s3
     container_name: dqul-spark-worker
     # restart: unless-stopped
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
@@ -141,8 +149,36 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - spark-master
+      - minio
     networks:
       - dqul-network
+  # dqul-compute:
+  #   build:
+  #     context: ./dQul-compute
+  #     dockerfile: Dockerfile
+  #   image: dqul-compute:latest
+  #   container_name: dqul-compute
+  #   # restart: unless-stopped
+  #   ports:
+  #     - "7002:7002"
+  #   environment:
+  #     - JAVA_TOOL_OPTIONS=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
+  #     - SPARK_MASTER=spark://spark-master:7077
+  #     - SPARK_DRIVER_HOST=dqul-compute
+  #     - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+  #     - MINIO_ENDPOINT=http://minio:9000
+  #     - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+  #     - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin123}
+  #     - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     - spark-master
+  #     - minio
+  #     - kafka
+  #     - redis
+  #   networks:
+  #     - dqul-network
 
 volumes:
   postgres_data:
