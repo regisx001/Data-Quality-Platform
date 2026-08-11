@@ -19,6 +19,7 @@ public class DatasetDetailResponse {
 
     private UUID id;
     private String name;
+    private String s3aUri;
     private String description;
     private String type;
     private DatasetStatus status;
