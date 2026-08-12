@@ -1,8 +1,9 @@
-package com.regisx001.dQul.compute.service;
+package com.regisx001.dQul.compute.io.storage.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.regisx001.dQul.compute.dto.TableProfileDto;
+import com.regisx001.dQul.compute.io.storage.ProfileStorageService;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -13,33 +14,32 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Service
-public class S3ProfileStorageService {
+public class S3ProfileStorageServiceImpl implements ProfileStorageService {
 
-    private static final Logger log = LoggerFactory.getLogger(S3ProfileStorageService.class);
+    private static final Logger log = LoggerFactory.getLogger(S3ProfileStorageServiceImpl.class);
 
     private final SparkSession sparkSession;
     private final ObjectMapper objectMapper;
     private final String defaultBucket;
 
-    public S3ProfileStorageService(SparkSession sparkSession,
-            @Value("${spark.s3.results-bucket:dqul-bucket}") String defaultBucket) {
+    public S3ProfileStorageServiceImpl(SparkSession sparkSession,
+                                       @Value("${spark.s3.results-bucket:dqul-results}") String defaultBucket) {
         this.sparkSession = sparkSession;
         this.defaultBucket = defaultBucket;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
+    @Override
     public String saveProfileResult(TableProfileDto profileDto) {
         UUID profileId = profileDto.getProfileId();
         String s3Uri = String.format("s3a://%s/profiles/%s.json", defaultBucket, profileId);
 
-        log.info("Saving single profile JSON document to S3 URI: {}", s3Uri);
+        log.info("Persisting single profile JSON document to S3 URI: {}", s3Uri);
 
         try {
             byte[] jsonBytes = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(profileDto);
@@ -48,7 +48,6 @@ public class S3ProfileStorageService {
             Path path = new Path(s3Uri);
             FileSystem fs = FileSystem.get(URI.create(s3Uri), hadoopConf);
 
-            // Ensure parent directory exists
             if (!fs.exists(path.getParent())) {
                 fs.mkdirs(path.getParent());
             }
@@ -58,7 +57,7 @@ public class S3ProfileStorageService {
                 out.flush();
             }
 
-            log.info("Successfully wrote {} bytes to single JSON file {}", jsonBytes.length, s3Uri);
+            log.info("Successfully wrote {} bytes to single JSON profile file {}", jsonBytes.length, s3Uri);
             return s3Uri;
         } catch (Exception e) {
             log.error("Failed to save profile result to S3 URI {}: {}", s3Uri, e.getMessage(), e);

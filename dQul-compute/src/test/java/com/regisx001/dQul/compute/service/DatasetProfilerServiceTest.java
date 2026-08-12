@@ -3,6 +3,12 @@ package com.regisx001.dQul.compute.service;
 import com.regisx001.dQul.compute.dto.ColumnProfileDto;
 import com.regisx001.dQul.compute.dto.DatasetProfileRequest;
 import com.regisx001.dQul.compute.dto.TableProfileDto;
+import com.regisx001.dQul.compute.engine.batch.profiler.DatasetProfilerEngine;
+import com.regisx001.dQul.compute.engine.batch.profiler.impl.DatasetProfilerEngineImpl;
+import com.regisx001.dQul.compute.io.reader.DatasetReader;
+import com.regisx001.dQul.compute.io.reader.impl.SparkDatasetReaderImpl;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -20,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class DatasetProfilerServiceTest {
 
     private static SparkSession spark;
+    private static DatasetReader datasetReader;
+    private static DatasetProfilerEngine profilerEngine;
 
     @BeforeAll
     static void setupSpark() {
@@ -28,6 +36,9 @@ class DatasetProfilerServiceTest {
                 .appName("DatasetProfilerServiceTest")
                 .config("spark.ui.enabled", "false")
                 .getOrCreate();
+
+        datasetReader = new SparkDatasetReaderImpl(spark);
+        profilerEngine = new DatasetProfilerEngineImpl();
     }
 
     @AfterAll
@@ -48,8 +59,6 @@ class DatasetProfilerServiceTest {
             writer.write("4,40,,Chicago\n");
         }
 
-        DatasetProfilerService profilerService = new DatasetProfilerService(spark);
-
         UUID profileId = UUID.randomUUID();
         UUID datasetId = UUID.randomUUID();
 
@@ -61,7 +70,8 @@ class DatasetProfilerServiceTest {
                 .csvOptions(Map.of("header", "true", "inferSchema", "true"))
                 .build();
 
-        TableProfileDto result = profilerService.profile(request);
+        Dataset<Row> df = datasetReader.read(request);
+        TableProfileDto result = profilerEngine.profile(request, df);
 
         assertNotNull(result);
         assertEquals(profileId, result.getProfileId());
