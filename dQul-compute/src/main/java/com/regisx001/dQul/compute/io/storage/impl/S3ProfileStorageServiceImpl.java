@@ -27,7 +27,7 @@ public class S3ProfileStorageServiceImpl implements ProfileStorageService {
     private final String defaultBucket;
 
     public S3ProfileStorageServiceImpl(SparkSession sparkSession,
-                                       @Value("${spark.s3.results-bucket:dqul-results}") String defaultBucket) {
+            @Value("${spark.s3.results-bucket:dqul-results}") String defaultBucket) {
         this.sparkSession = sparkSession;
         this.defaultBucket = defaultBucket;
         this.objectMapper = new ObjectMapper();

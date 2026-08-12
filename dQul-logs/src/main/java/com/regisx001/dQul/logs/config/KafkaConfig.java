@@ -36,6 +36,14 @@ public class KafkaConfig {
     }
 
     @Bean
+    public NewTopic logsAggregateRequestTopic() {
+        return TopicBuilder.name("dqul.logs.aggregate.request")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
     public NewTopic platformLogsDltTopic() {
         return TopicBuilder.name(LOGS_DLT_TOPIC)
                 .partitions(3)

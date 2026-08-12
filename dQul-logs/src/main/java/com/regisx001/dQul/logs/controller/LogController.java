@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import com.regisx001.dQul.compute.dto.logs.LogsAggregationRequest;
+import com.regisx001.dQul.logs.kafka.LogsAggregationKafkaProducer;
+
 import java.util.UUID;
 
 @RestController
@@ -34,6 +37,33 @@ public class LogController {
 
     private final LogService logService;
     private final LogAnalyticsService logAnalyticsService;
+    private final LogsAggregationKafkaProducer aggregationKafkaProducer;
+
+    /**
+     * Triggers an asynchronous Spark batch logs aggregation job by publishing
+     * a clean request event to Kafka (consumed by dQul-compute microservice).
+     */
+    @PostMapping("/aggregate")
+    public ResponseEntity<Map<String, Object>> triggerBatchAggregation(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+
+        UUID jobId = UUID.randomUUID();
+        LogsAggregationRequest event = LogsAggregationRequest.builder()
+                .jobId(jobId)
+                .from(from)
+                .to(to)
+                .build();
+
+        log.info("Triggering Spark batch logs aggregation for jobId={}", jobId);
+        aggregationKafkaProducer.sendAggregationRequest(event);
+
+        return ResponseEntity.accepted().body(Map.of(
+                "jobId", jobId,
+                "status", "BATCH_AGGREGATION_REQUESTED",
+                "message", "Batch logs aggregation request published to Kafka"
+        ));
+    }
 
     @GetMapping
     public ResponseEntity<LogPageDto> queryLogs(

@@ -20,10 +20,19 @@ spring:
       missing-topics-fatal: false
 
 dqul:
+  logs:
+    datasource:
+      url: ${DQUL_LOGS_DATABASE_URL:jdbc:postgresql://postgres:5432/dqul_logs}
+      username: ${DQUL_LOGS_DATABASE_USERNAME:postgres}
+      password: ${DQUL_LOGS_DATABASE_PASSWORD:postgres}
+      driver-class-name: ${DATABASE_DRIVER:org.postgresql.Driver}
+
   kafka:
     topics:
       profile-request: ${KAFKA_TOPIC_PROFILE_REQUEST:dqul.dataset.profile.request}
       profile-result: ${KAFKA_TOPIC_PROFILE_RESULT:dqul.dataset.profile.result}
+      logs-aggregate-request: ${KAFKA_TOPIC_LOGS_AGGREGATE_REQUEST:dqul.logs.aggregate.request}
+      logs-aggregate-result: ${KAFKA_TOPIC_LOGS_AGGREGATE_RESULT:dqul.logs.aggregate.result}
 
   data:
     redis:
@@ -66,7 +75,7 @@ spark:
     secretKey: ${MINIO_ROOT_PASSWORD:minioadmin123}
     pathStyleAccess: true
     sslEnabled: false
-    results-bucket: ${MINIO_BUCKET:dqul-bucket}
+    results-bucket: ${MINIO_BUCKET:dqul-results}
 
 server:
   port: 7002
