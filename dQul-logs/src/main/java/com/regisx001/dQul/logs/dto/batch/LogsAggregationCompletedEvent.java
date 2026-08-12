@@ -1,4 +1,4 @@
-package com.regisx001.dQul.compute.dto.logs;
+package com.regisx001.dQul.logs.dto.batch;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

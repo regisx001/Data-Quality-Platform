@@ -22,7 +22,11 @@ import java.util.stream.Collectors;
 /**
  * High-performance {@link LogAnalyticsService} implementation that pushes
  * aggregations down to PostgreSQL via SQL queries and caches results using Redis.
+ *
+ * @deprecated Legacy SQL aggregation implementation. Replaced by Spark Structured
+ *             Streaming (RealtimeLogSseService) and Spark Batch Aggregations (BatchLogMetricService).
  */
+@Deprecated(since = "2.0", forRemoval = false)
 @Service
 @Primary
 @RequiredArgsConstructor

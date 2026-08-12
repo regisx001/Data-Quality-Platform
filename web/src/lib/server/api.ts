@@ -44,6 +44,7 @@ export {
 	getLogStats,
 	getLogAnalytics,
 	purgeLogs,
+	getBatchLogHistory,
 } from "./api/logs";
 
 export type {
@@ -74,6 +75,6 @@ export type {
 	TraceMetrics,
 	UserMetrics,
 	LevelDistribution,
+	BatchLogMetric,
+	LogsAggregationResult,
 } from "./api/logs";
-
-

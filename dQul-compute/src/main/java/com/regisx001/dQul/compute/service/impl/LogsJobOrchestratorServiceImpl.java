@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Service
 public class LogsJobOrchestratorServiceImpl implements LogsJobOrchestratorService {
@@ -81,11 +82,19 @@ public class LogsJobOrchestratorServiceImpl implements LogsJobOrchestratorServic
             long duration = System.currentTimeMillis() - startTime;
             log.info("Successfully completed batch logs aggregation job for jobId={} in {} ms", request.getJobId(), duration);
 
+            Map<String, Long> levelCounts = resultDto.getLevelCounts();
+            Long infoCount = levelCounts != null ? levelCounts.getOrDefault("INFO", 0L) : 0L;
+            Long warnCount = levelCounts != null ? levelCounts.getOrDefault("WARN", 0L) : 0L;
+            Long errorCount = levelCounts != null ? levelCounts.getOrDefault("ERROR", 0L) : 0L;
+            Long debugCount = levelCounts != null ? levelCounts.getOrDefault("DEBUG", 0L) : 0L;
+
             return LogsAggregationCompletedEvent.builder()
                     .jobId(request.getJobId())
                     .status("SUCCESS")
+                    .from(request.getFrom())
+                    .to(request.getTo())
                     .s3ResultUri(s3ResultUri)
-                    .totalLogsCount(resultDto.getTotalLogsCount())
+                    .resultData(resultDto)
                     .executionDurationMs(duration)
                     .completedAt(LocalDateTime.now())
                     .build();
@@ -97,6 +106,8 @@ public class LogsJobOrchestratorServiceImpl implements LogsJobOrchestratorServic
             return LogsAggregationCompletedEvent.builder()
                     .jobId(request.getJobId())
                     .status("FAILED")
+                    .from(request.getFrom())
+                    .to(request.getTo())
                     .errorMessage(e.getMessage())
                     .executionDurationMs(duration)
                     .completedAt(LocalDateTime.now())

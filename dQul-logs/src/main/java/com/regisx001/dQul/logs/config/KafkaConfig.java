@@ -100,4 +100,30 @@ public class KafkaConfig {
         factory.setCommonErrorHandler(new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3)));
         return factory;
     }
+
+    /**
+     * Consumer factory for Spark batch completion events. Deserializes
+     * JSON messages from topic dqul.logs.aggregate.result to LogsAggregationCompletedEvent.
+     */
+    @Bean
+    public ConsumerFactory<String, com.regisx001.dQul.logs.dto.batch.LogsAggregationCompletedEvent> batchCompletionConsumerFactory(
+            KafkaProperties kafkaProperties, ObjectMapper objectMapper) {
+        Map<String, Object> props = kafkaProperties.buildConsumerProperties();
+        JsonDeserializer<com.regisx001.dQul.logs.dto.batch.LogsAggregationCompletedEvent> jsonDeserializer =
+                new JsonDeserializer<>(com.regisx001.dQul.logs.dto.batch.LogsAggregationCompletedEvent.class, objectMapper);
+        jsonDeserializer.setUseTypeHeaders(false);
+        jsonDeserializer.addTrustedPackages("*");
+        ErrorHandlingDeserializer<com.regisx001.dQul.logs.dto.batch.LogsAggregationCompletedEvent> valueDeserializer =
+                new ErrorHandlingDeserializer<>(jsonDeserializer);
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), valueDeserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, com.regisx001.dQul.logs.dto.batch.LogsAggregationCompletedEvent> batchCompletionKafkaListenerContainerFactory(
+            ConsumerFactory<String, com.regisx001.dQul.logs.dto.batch.LogsAggregationCompletedEvent> batchCompletionConsumerFactory) {
+        ConcurrentKafkaListenerContainerFactory<String, com.regisx001.dQul.logs.dto.batch.LogsAggregationCompletedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(batchCompletionConsumerFactory);
+        return factory;
+    }
 }

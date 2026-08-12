@@ -21,11 +21,10 @@ import java.util.stream.Collectors;
  * Default {@link LogAnalyticsService} that loads the filtered time window into
  * memory and aggregates it across the universal observability dimensions.
  *
- * <p>
- * Deliberately bounded: the window is capped ({@link #MAX_ROWS}) so a single
- * analytics request cannot OOM the JVM. For unbounded windows prefer a
- * time-bucketing (downsampling) strategy rather than raw custom SQL per metric.
+ * @deprecated Legacy in-memory aggregation implementation. Replaced by Spark Structured
+ *             Streaming (RealtimeLogSseService) and Spark Batch Aggregations (BatchLogMetricService).
  */
+@Deprecated(since = "2.0", forRemoval = false)
 @Service
 @RequiredArgsConstructor
 @Slf4j

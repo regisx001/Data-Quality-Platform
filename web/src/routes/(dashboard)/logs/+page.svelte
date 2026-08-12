@@ -19,6 +19,9 @@
 	import AlertCircle from "@lucide/svelte/icons/alert-circle";
 	import TableProperties from "@lucide/svelte/icons/table-properties";
 	import BarChart3 from "@lucide/svelte/icons/bar-chart-3";
+	import RealtimeSeverityChart from "$lib/components/dashboard/realtime-severity-chart.svelte";
+	import RealtimeHistoryChart from "$lib/components/dashboard/realtime-history-chart.svelte";
+	import RealtimeLineChart from "$lib/components/dashboard/realtime-line-chart.svelte";
 
 	interface RealtimeMetrics {
 		windowStart: string;
@@ -173,7 +176,7 @@
 
 <svelte:head>
 	<title>Real-Time Log Stream | Data Quality Platform</title>
-	<meta name="description" content="Live 5-second tumbling window log metrics powered by Spark Structured Streaming & SSE." />
+	<meta name="description" content="Live 5-second tumbling window log metrics and real-time streaming telemetry." />
 </svelte:head>
 
 <div class="p-6 sm:p-8 w-full space-y-6">
@@ -202,7 +205,7 @@
 
 			<Button variant="default" size="sm" onclick={handleTriggerBatchAggregation} disabled={isTriggeringBatch} class="gap-2">
 				<Zap class={`size-4 ${isTriggeringBatch ? 'animate-spin' : ''}`} />
-				<span>{isTriggeringBatch ? 'Triggering...' : 'Trigger Spark Batch'}</span>
+				<span>{isTriggeringBatch ? 'Triggering...' : 'Trigger Batch Aggregation'}</span>
 			</Button>
 
 			<!-- Link to Batch Observability & Analytics -->
@@ -302,151 +305,24 @@
 		</div>
 	</div>
 
-	<!-- Live Stream Charts Grid -->
+	<!-- Full-Width Real-Time Tumbling Window History (Stacked Bar Chart + Legend) -->
+	<div class="w-full">
+		<RealtimeHistoryChart history={history} />
+	</div>
+
+	<!-- Lower Row: Line Chart for Total Volume Trend + Pie Chart for Active Window Severity -->
 	<div class="grid gap-6 md:grid-cols-3">
-		<!-- Time Series Real-Time Spark Stream Chart -->
-		<Card.Root class="md:col-span-2 border-border shadow-xs">
-			<Card.Header class="pb-2">
-				<Card.Title class="text-base font-semibold flex items-center justify-between">
-					<div class="flex items-center gap-2">
-						<Activity class="size-4 text-primary" />
-						<span>Real-Time Spark Tumbling Window History</span>
-					</div>
-					<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono border border-border bg-accent/40 font-medium">
-						{history.length} snapshots
-					</span>
-				</Card.Title>
-				<Card.Description class="text-xs">
-					Rolling 5-second tumbling window throughput (logs/sec) and volume calculation from Spark Structured Streaming.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content class="space-y-4">
-				<!-- Custom Canvas SVG Sparkline / Bar Chart -->
-				<div class="h-64 w-full bg-accent/20 rounded-xl p-4 flex flex-col justify-between border border-border/50 relative">
-					{#if history.length === 0}
-						<div class="h-full flex items-center justify-center text-xs text-muted-foreground">
-							Waiting for real-time Spark stream data...
-						</div>
-					{:else}
-						{@const maxLogs = Math.max(...history.map(h => h.totalLogsCount), 10)}
-						
-						<!-- Bars container -->
-						<div class="flex-1 flex items-end justify-between gap-1.5 pt-4">
-							{#each history as point, idx}
-								{@const heightPercent = Math.max((point.totalLogsCount / maxLogs) * 100, 4)}
-								{@const hasErrors = point.errorCount > 0}
-								<div class="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end">
-									<!-- Tooltip on hover -->
-									<div class="absolute -top-12 hidden group-hover:flex flex-col items-center bg-popover text-popover-foreground border border-border text-[10px] p-1.5 rounded-lg shadow-xl z-20 whitespace-nowrap">
-										<span class="font-bold">{formatTime(point.windowEnd)}</span>
-										<span>{point.totalLogsCount} logs ({point.throughputLogsPerSec.toFixed(1)}/s)</span>
-										{#if point.errorCount > 0}
-											<span class="text-rose-500 font-semibold">{point.errorCount} errors</span>
-										{/if}
-									</div>
-
-									<!-- Bar -->
-									<div
-										style="height: {heightPercent}%;"
-										class={`w-full rounded-t-sm transition-all duration-300 ${
-											hasErrors
-												? 'bg-gradient-to-t from-rose-600 to-rose-400'
-												: idx === history.length - 1
-													? 'bg-gradient-to-t from-emerald-600 to-emerald-400'
-													: 'bg-gradient-to-t from-primary/80 to-primary/40'
-										}`}
-									></div>
-								</div>
-							{/each}
-						</div>
-
-						<!-- X-Axis Labels -->
-						<div class="flex justify-between items-center pt-2 text-[10px] text-muted-foreground font-mono border-t border-border/40">
-							<span>{history.length > 0 ? formatTime(history[0].windowStart) : ''}</span>
-							<span>{history.length > 0 ? formatTime(history[history.length - 1].windowEnd) : ''}</span>
-						</div>
-					{/if}
-				</div>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Active Window Severity Breakdown Card -->
-		<Card.Root class="border-border shadow-xs flex flex-col">
-			<Card.Header class="pb-2">
-				<Card.Title class="text-base font-semibold flex items-center gap-2">
-					<Layers class="size-4 text-primary" />
-					<span>Active Window Severity</span>
-				</Card.Title>
-				<Card.Description class="text-xs">
-					Level distribution for the latest 5-second tumbling window.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content class="space-y-4 flex-1 flex flex-col justify-center">
-				<div class="space-y-3">
-					<!-- INFO -->
-					<div class="space-y-1">
-						<div class="flex items-center justify-between text-xs">
-							<span class="font-medium flex items-center gap-1.5">
-								<span class="size-2 rounded-full bg-blue-500"></span>
-								INFO
-							</span>
-							<span class="font-mono font-bold">{currentInfoCount}</span>
-						</div>
-						<div class="h-2 w-full bg-accent rounded-full overflow-hidden">
-							<div
-								style="width: {currentWindowLogs > 0 ? (currentInfoCount / currentWindowLogs) * 100 : 0}%;"
-								class="h-full bg-blue-500 rounded-full transition-all duration-300"
-							></div>
-						</div>
-					</div>
-
-					<!-- WARN -->
-					<div class="space-y-1">
-						<div class="flex items-center justify-between text-xs">
-							<span class="font-medium flex items-center gap-1.5">
-								<span class="size-2 rounded-full bg-amber-500"></span>
-								WARN
-							</span>
-							<span class="font-mono font-bold">{currentWarnCount}</span>
-						</div>
-						<div class="h-2 w-full bg-accent rounded-full overflow-hidden">
-							<div
-								style="width: {currentWindowLogs > 0 ? (currentWarnCount / currentWindowLogs) * 100 : 0}%;"
-								class="h-full bg-amber-500 rounded-full transition-all duration-300"
-							></div>
-						</div>
-					</div>
-
-					<!-- ERROR -->
-					<div class="space-y-1">
-						<div class="flex items-center justify-between text-xs">
-							<span class="font-medium flex items-center gap-1.5">
-								<span class="size-2 rounded-full bg-rose-500"></span>
-								ERROR
-							</span>
-							<span class="font-mono font-bold text-rose-500">{currentErrorCount}</span>
-						</div>
-						<div class="h-2 w-full bg-accent rounded-full overflow-hidden">
-							<div
-								style="width: {currentWindowLogs > 0 ? (currentErrorCount / currentWindowLogs) * 100 : 0}%;"
-								class="h-full bg-rose-500 rounded-full transition-all duration-300"
-							></div>
-						</div>
-					</div>
-				</div>
-
-				<div class="pt-4 border-t border-border text-[11px] text-muted-foreground space-y-1">
-					<div class="flex justify-between">
-						<span>Window Duration:</span>
-						<span class="font-mono text-foreground">5.0 seconds</span>
-					</div>
-					<div class="flex justify-between">
-						<span>Storage Mode:</span>
-						<span class="font-mono text-foreground">Timeseries Stream</span>
-					</div>
-				</div>
-			</Card.Content>
-		</Card.Root>
+		<div class="md:col-span-2">
+			<RealtimeLineChart history={history} />
+		</div>
+		<div class="md:col-span-1">
+			<RealtimeSeverityChart
+				infoCount={currentInfoCount}
+				warnCount={currentWarnCount}
+				errorCount={currentErrorCount}
+				totalLogs={currentWindowLogs}
+			/>
+		</div>
 	</div>
 
 	<!-- Live Event Stream Feed Table -->
@@ -493,7 +369,7 @@
 											</div>
 											<p class="text-sm font-medium text-foreground">Waiting for live stream data...</p>
 											<p class="text-xs text-muted-foreground max-w-sm">
-												Real-time log metric snapshots will automatically populate here as Spark processes tumbling windows.
+												Real-time log metric snapshots will automatically populate here as log tumbling windows process.
 											</p>
 										</div>
 									</td>
