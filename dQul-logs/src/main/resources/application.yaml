@@ -35,12 +35,6 @@ spring:
       group-id: dqul-logs-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-dqul:
-  kafka:
-    topics:
-      logs-aggregate-request: ${KAFKA_TOPIC_LOGS_AGGREGATE_REQUEST:dqul.logs.aggregate.request}
-      logs-aggregate-result: ${KAFKA_TOPIC_LOGS_AGGREGATE_RESULT:dqul.logs.aggregate.result}
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -62,6 +56,12 @@ dqul:
       cache-null-values: false
       key-prefix: dqul-logs
       use-key-prefix: true
+
+dqul:
+  kafka:
+    topics:
+      logs-aggregate-request: ${KAFKA_TOPIC_LOGS_AGGREGATE_REQUEST:dqul.logs.aggregate.request}
+      logs-aggregate-result: ${KAFKA_TOPIC_LOGS_AGGREGATE_RESULT:dqul.logs.aggregate.result}
 
 server:
   port: 7001

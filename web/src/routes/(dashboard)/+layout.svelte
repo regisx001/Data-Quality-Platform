@@ -45,13 +45,15 @@
 							<Breadcrumb.Page>
 								{page.url.pathname.startsWith("/logs/table")
 									? "Log Explorer Table"
-									: page.url.pathname.startsWith("/logs")
-										? "Observability & Analytics"
-										: page.url.pathname.startsWith("/http-telemetry")
-											? "HTTP Telemetry Dashboard"
-											: page.url.pathname.startsWith("/settings")
-												? "Settings"
-												: "Datasource Management"}
+									: page.url.pathname.startsWith("/logs/batch")
+										? "Batch Observability & Analytics"
+										: page.url.pathname.startsWith("/logs")
+											? "Real-Time Log Stream"
+											: page.url.pathname.startsWith("/http-telemetry")
+												? "HTTP Telemetry Dashboard"
+												: page.url.pathname.startsWith("/settings")
+													? "Settings"
+													: "Datasource Management"}
 							</Breadcrumb.Page>
 						</Breadcrumb.Item>
 					</Breadcrumb.List>

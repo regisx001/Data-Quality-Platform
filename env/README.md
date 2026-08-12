@@ -99,8 +99,8 @@ Both environments automatically configure Apache Spark's S3A client in `SparkCon
 
 ## 🚨 Troubleshooting Common Issues
 
-1. **`ClassNotFoundException: Class org.apache.hadoop.fs.s3a.S3AFileSystem not found`**:
-   - Ensure `Dockerfile.spark` has downloaded `hadoop-aws-3.3.4.jar` and `aws-java-sdk-bundle-1.12.262.jar` with `chmod 644` permissions in `/opt/spark/jars/`.
+1. **`ClassNotFoundException / AnalysisException: Failed to find data source: kafka / S3AFileSystem not found`**:
+   - Ensure `Dockerfile.spark` has downloaded `hadoop-aws-3.3.4.jar`, `aws-java-sdk-bundle-1.12.262.jar`, `spark-sql-kafka-0-10_2.12-3.5.1.jar`, `spark-token-provider-kafka-0-10_2.12-3.5.1.jar`, `kafka-clients-3.5.1.jar`, and `commons-pool2-2.11.1.jar` with `chmod 644` permissions in `/opt/spark/jars/`.
 
 2. **`IllegalAccessError: sun.nio.ch.DirectBuffer` on Java 21**:
    - Verify `JAVA_TOOL_OPTIONS` includes `--add-opens` flags for Java 21 internal module access.
