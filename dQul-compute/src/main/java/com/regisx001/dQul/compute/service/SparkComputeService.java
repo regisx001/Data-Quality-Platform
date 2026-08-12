@@ -1,26 +1,21 @@
 package com.regisx001.dQul.compute.service;
 
-import org.apache.spark.sql.SparkSession;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
+/**
+ * Service abstraction for managing and checking the status of SparkSession lifecycle.
+ */
+public interface SparkComputeService {
 
-@Service
-public class SparkComputeService {
+    /**
+     * Checks if the underlying SparkSession is initialized and active.
+     *
+     * @return true if Spark is active, false otherwise
+     */
+    boolean isSparkActive();
 
-    private static final Logger log = LoggerFactory.getLogger(SparkComputeService.class);
-
-    private final SparkSession sparkSession;
-
-    public SparkComputeService(SparkSession sparkSession) {
-        this.sparkSession = sparkSession;
-    }
-
-    public boolean isSparkActive() {
-        return sparkSession != null && !sparkSession.sparkContext().isStopped();
-    }
-
-    public String getSparkVersion() {
-        return isSparkActive() ? sparkSession.version() : "INACTIVE";
-    }
+    /**
+     * Retrieves the version string of Apache Spark engine.
+     *
+     * @return Spark version string
+     */
+    String getSparkVersion();
 }

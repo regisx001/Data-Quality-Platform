@@ -35,11 +35,6 @@ spring:
       group-id: dqul-logs-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      # JSON deserialization is configured programmatically in KafkaConfig
-      # (uses the application ObjectMapper with java.time support, ignores type headers,
-      #  maps to LogIngestionDto). Do NOT add spring.json.* properties here.
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -61,6 +56,12 @@ spring:
       cache-null-values: false
       key-prefix: dqul-logs
       use-key-prefix: true
+
+dqul:
+  kafka:
+    topics:
+      logs-aggregate-request: ${KAFKA_TOPIC_LOGS_AGGREGATE_REQUEST:dqul.logs.aggregate.request}
+      logs-aggregate-result: ${KAFKA_TOPIC_LOGS_AGGREGATE_RESULT:dqul.logs.aggregate.result}
 
 server:
   port: 7001

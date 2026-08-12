@@ -19,16 +19,10 @@ spring:
     listener:
       missing-topics-fatal: false
 
-dqul:
-  kafka:
-    topics:
-      profile-request: ${KAFKA_TOPIC_PROFILE_REQUEST:dqul.dataset.profile.request}
-      profile-result: ${KAFKA_TOPIC_PROFILE_RESULT:dqul.dataset.profile.result}
-
   data:
     redis:
-      host: ${REDIS_HOST:redis}
-      port: ${REDIS_PORT:6379}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:7379}
       password: ${REDIS_PASSWORD:}
       timeout: 2s
       connect-timeout: 2s
@@ -46,6 +40,21 @@ dqul:
       cache-null-values: false
       key-prefix: dqul-compute
       use-key-prefix: true
+
+dqul:
+  logs:
+    datasource:
+      url: ${DQUL_LOGS_DATABASE_URL:jdbc:postgresql://postgres:5432/dqul_logs}
+      username: ${DQUL_LOGS_DATABASE_USERNAME:postgres}
+      password: ${DQUL_LOGS_DATABASE_PASSWORD:postgres}
+      driver-class-name: ${DATABASE_DRIVER:org.postgresql.Driver}
+
+  kafka:
+    topics:
+      profile-request: ${KAFKA_TOPIC_PROFILE_REQUEST:dqul.dataset.profile.request}
+      profile-result: ${KAFKA_TOPIC_PROFILE_RESULT:dqul.dataset.profile.result}
+      logs-aggregate-request: ${KAFKA_TOPIC_LOGS_AGGREGATE_REQUEST:dqul.logs.aggregate.request}
+      logs-aggregate-result: ${KAFKA_TOPIC_LOGS_AGGREGATE_RESULT:dqul.logs.aggregate.result}
 
 spark:
   enabled: ${SPARK_ENABLED:true}
@@ -66,7 +75,7 @@ spark:
     secretKey: ${MINIO_ROOT_PASSWORD:minioadmin123}
     pathStyleAccess: true
     sslEnabled: false
-    results-bucket: ${MINIO_BUCKET:dqul-bucket}
+    results-bucket: ${MINIO_BUCKET:dqul-results}
 
 server:
   port: 7002

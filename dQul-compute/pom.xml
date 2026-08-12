@@ -73,6 +73,13 @@
 			<version>${spark.version}</version>
 		</dependency>
 
+		<!-- Apache Spark Structured Streaming Kafka Integration -->
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-sql-kafka-0-10_2.12</artifactId>
+			<version>${spark.version}</version>
+		</dependency>
+
 		<!-- Required for Spark 3.x embedded Web UI compatibility in Spring Boot 3 -->
 		<dependency>
 			<groupId>javax.servlet</groupId>

@@ -5,23 +5,20 @@ import com.regisx001.dQul.logs.dto.analytics.LogAnalyticsRequest;
 
 /**
  * Aggregates the raw {@code LogEntry} store into a structured analytics model
- * across the universal observability dimensions (volume, log level, service,
- * category, HTTP, latency, error signature, trace, user).
+ * across the universal observability dimensions.
  *
- * <p>
- * Implementations are expected to be pure read-only aggregations over a time
- * window and safe to cache. The endpoint contract is deliberately small so
- * subsystem-specific dimensions can be layered on top via {@code metadata}
- * without altering this interface.
+ * @deprecated Legacy aggregation interface. Replaced by Spark Structured Streaming
+ *             (RealtimeLogSseService) and Spark Batch Aggregations (BatchLogMetricService).
  */
+@Deprecated(since = "2.0", forRemoval = false)
 public interface LogAnalyticsService {
 
     /**
      * Computes analytics for the given window and optional filters.
      *
-     * @param request window bounds and filters; from/to are inclusive, nulls
-     *                treated as unlimited, granularity defaults to hourly.
+     * @param request window bounds and filters
      * @return aggregated analytics envelope
      */
+    @Deprecated(since = "2.0", forRemoval = false)
     LogAnalyticsDto analyze(LogAnalyticsRequest request);
 }

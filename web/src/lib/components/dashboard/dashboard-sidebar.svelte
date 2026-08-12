@@ -11,6 +11,10 @@
 	import Layers from "@lucide/svelte/icons/layers";
 	import HelpCircle from "@lucide/svelte/icons/help-circle";
 	import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
+	import ChevronDown from "@lucide/svelte/icons/chevron-down";
+	import Radio from "@lucide/svelte/icons/radio";
+	import BarChart3 from "@lucide/svelte/icons/bar-chart-3";
+	import TableProperties from "@lucide/svelte/icons/table-properties";
 	import Logo from "$lib/components/ui/logo/logo.svelte";
 	import type { ComponentProps } from "svelte";
 
@@ -24,7 +28,9 @@
 
 	const sidebar = Sidebar.useSidebar();
 
-	let mainNav = $derived([
+	let isLogsOpen = $state(currentPath.startsWith("/logs"));
+
+	let platformNav = $derived([
 		{
 			title: "Datasources",
 			url: "/datasources",
@@ -32,22 +38,28 @@
 			active: currentPath.startsWith("/datasources")
 		},
 		{
-			title: "Logs & Analytics",
-			url: "/logs",
-			icon: Activity,
-			active: currentPath.startsWith("/logs")
-		},
-		{
-			title: "HTTP Telemetry",
-			url: "/http-telemetry",
-			icon: Layers,
-			active: currentPath.startsWith("/http-telemetry")
-		},
-		{
 			title: "Settings",
 			url: "/settings",
 			icon: Settings,
 			active: currentPath.startsWith("/settings")
+		}
+	]);
+
+	let logsSubNav = $derived([
+		{
+			title: "Real-time Stream",
+			url: "/logs",
+			active: currentPath === "/logs"
+		},
+		{
+			title: "Batch Analytics",
+			url: "/logs/batch",
+			active: currentPath.startsWith("/logs/batch")
+		},
+		{
+			title: "Log Explorer",
+			url: "/logs/table",
+			active: currentPath.startsWith("/logs/table")
 		}
 	]);
 
@@ -66,7 +78,7 @@
 </script>
 
 <Sidebar.Root collapsible="offcanvas" {...restProps} bind:ref>
-	<!-- Sidebar Brand Header (matching dashboard-01) -->
+	<!-- Sidebar Brand Header -->
 	<Sidebar.Header class="p-3.5 border-b border-sidebar-border/40">
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
@@ -81,14 +93,14 @@
 		</Sidebar.Menu>
 	</Sidebar.Header>
 
-	<!-- Sidebar Main Content (matching dashboard-01) -->
+	<!-- Sidebar Main Content -->
 	<Sidebar.Content>
-		<!-- Main Navigation Group -->
+		<!-- Platform Navigation Group -->
 		<Sidebar.Group>
 			<Sidebar.GroupLabel>Platform</Sidebar.GroupLabel>
 			<Sidebar.GroupContent>
 				<Sidebar.Menu>
-					{#each mainNav as item (item.title)}
+					{#each platformNav as item (item.title)}
 						{@const Icon = item.icon}
 						<Sidebar.MenuItem>
 							<Sidebar.MenuButton isActive={item.active}>
@@ -105,7 +117,57 @@
 			</Sidebar.GroupContent>
 		</Sidebar.Group>
 
-		<!-- Secondary Navigation Group (matching dashboard-01) -->
+		<Sidebar.Separator class="my-2" />
+
+		<!-- Observability Group with Separator & Label -->
+		<Sidebar.Group>
+			<Sidebar.GroupLabel>Observability</Sidebar.GroupLabel>
+			<Sidebar.GroupContent>
+				<Sidebar.Menu>
+					<!-- Logs & Analytics Dropdown Menu -->
+					<Sidebar.MenuItem>
+						<Sidebar.MenuButton
+							isActive={currentPath.startsWith("/logs")}
+							onclick={() => (isLogsOpen = !isLogsOpen)}
+							class="justify-between cursor-pointer"
+						>
+							<span>Logs & Analytics</span>
+							<ChevronDown class={`size-4 text-muted-foreground transition-transform duration-200 ${isLogsOpen ? 'rotate-180' : ''}`} />
+						</Sidebar.MenuButton>
+
+						{#if isLogsOpen}
+							<Sidebar.MenuSub>
+								{#each logsSubNav as subItem (subItem.title)}
+									<Sidebar.MenuSubItem>
+										<Sidebar.MenuSubButton isActive={subItem.active}>
+											{#snippet child({ props })}
+												<a href={subItem.url} {...props}>
+													<span>{subItem.title}</span>
+												</a>
+											{/snippet}
+										</Sidebar.MenuSubButton>
+									</Sidebar.MenuSubItem>
+								{/each}
+							</Sidebar.MenuSub>
+						{/if}
+					</Sidebar.MenuItem>
+
+					<!-- HTTP Telemetry Menu Item -->
+					<Sidebar.MenuItem>
+						<Sidebar.MenuButton isActive={currentPath.startsWith("/http-telemetry")}>
+							{#snippet child({ props })}
+								<a href="/http-telemetry" {...props}>
+									<Layers class="size-4 me-2 text-muted-foreground" />
+									<span>HTTP Telemetry</span>
+								</a>
+							{/snippet}
+						</Sidebar.MenuButton>
+					</Sidebar.MenuItem>
+				</Sidebar.Menu>
+			</Sidebar.GroupContent>
+		</Sidebar.Group>
+
+		<!-- Secondary Support Navigation Group -->
 		<Sidebar.Group class="mt-auto">
 			<Sidebar.GroupLabel>Support</Sidebar.GroupLabel>
 			<Sidebar.GroupContent>
@@ -128,7 +190,7 @@
 		</Sidebar.Group>
 	</Sidebar.Content>
 
-	<!-- Sidebar Footer User Menu (matching dashboard-01 NavUser) -->
+	<!-- Sidebar Footer User Menu -->
 	<Sidebar.Footer>
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>

@@ -17,10 +17,10 @@
 		switch (timeRange) {
 			case "24h":
 				return "Last 24 hours";
-			case "12h":
-				return "Last 12 hours";
-			case "6h":
-				return "Last 6 hours";
+			case "7d":
+				return "Last week";
+			case "30d":
+				return "Last month";
 			default:
 				return "Last 24 hours";
 		}
@@ -38,8 +38,8 @@
 		if (chartData.length === 0) return [];
 		const newestDate = chartData[chartData.length - 1]?.date || new Date();
 		let hoursToSubtract = 24;
-		if (timeRange === "12h") hoursToSubtract = 12;
-		if (timeRange === "6h") hoursToSubtract = 6;
+		if (timeRange === "7d") hoursToSubtract = 24 * 7;
+		if (timeRange === "30d") hoursToSubtract = 24 * 30;
 
 		const cutoff = new Date(newestDate.getTime() - hoursToSubtract * 60 * 60 * 1000);
 		return chartData.filter((item) => item.date >= cutoff);
@@ -64,8 +64,8 @@
 			</Select.Trigger>
 			<Select.Content class="rounded-md">
 				<Select.Item value="24h" class="text-xs">Last 24 hours</Select.Item>
-				<Select.Item value="12h" class="text-xs">Last 12 hours</Select.Item>
-				<Select.Item value="6h" class="text-xs">Last 6 hours</Select.Item>
+				<Select.Item value="7d" class="text-xs">Last week</Select.Item>
+				<Select.Item value="30d" class="text-xs">Last month</Select.Item>
 			</Select.Content>
 		</Select.Root>
 	</Card.Header>
@@ -91,6 +91,12 @@
 					props={{
 						xAxis: {
 							format: (v: Date) => {
+								if (timeRange === "7d" || timeRange === "30d") {
+									return v.toLocaleDateString("en-US", {
+										month: "short",
+										day: "numeric"
+									});
+								}
 								return v.toLocaleTimeString("en-US", {
 									hour: "2-digit",
 									minute: "2-digit",

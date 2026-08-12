@@ -343,3 +343,43 @@ export async function getLogAnalytics(params: AnalyticsQueryParams = {}): Promis
 export async function purgeLogs(days: number = 30): Promise<ApiResult<PurgeResult>> {
 	return logsApiFetch<PurgeResult>(`/api/v1/logs/purge?days=${days}`, { method: "DELETE" });
 }
+
+export interface LogsAggregationResult {
+	jobId: string;
+	totalLogsCount: number;
+	levelCounts?: Record<string, number>;
+	serviceCounts?: Record<string, number>;
+	categoryCounts?: Record<string, number>;
+	avgExecutionTimeMs?: number;
+	maxExecutionTimeMs?: number;
+	topErrorMessages?: Array<{
+		serviceName: string;
+		category: string;
+		message: string;
+		count: number;
+	}>;
+	minTimestamp?: string;
+	maxTimestamp?: string;
+	aggregatedAt?: string;
+}
+
+export interface BatchLogMetric {
+	id: string;
+	jobId: string;
+	status: string;
+	fromTimestamp: string | null;
+	toTimestamp: string | null;
+	totalLogsCount: number;
+	avgExecutionTimeMs: number | null;
+	minioStoragePath: string | null;
+	resultData?: LogsAggregationResult | null;
+	createdAt: string;
+}
+
+/**
+ * GET /api/v1/logs/batch/history?limit={limit}
+ * Fetches recent historical batch analytics execution records
+ */
+export async function getBatchLogHistory(limit: number = 30): Promise<ApiResult<BatchLogMetric[]>> {
+	return logsApiFetch<BatchLogMetric[]>(`/api/v1/logs/batch/history?limit=${limit}`, { method: "GET" });
+}

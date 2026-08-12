@@ -7,8 +7,10 @@ Logs microservice for the Data Quality Platform — a Spring Boot 3.4.2 / Java 2
 > **Standalone by design**
 > This service is **not** registered as a module of the main `dQul` application and remains
 > independently deployable. It shares platform infrastructure (Kafka, PostgreSQL, Redis) defined
-> in the root `docker-compose.yaml`. HTTP log ingestion is deferred to a post-MVP hybrid phase —
-> the write path is Kafka-only.
+> in the root `docker-compose.yaml`.
+
+> [!IMPORTANT]
+> **v2.0 Deprecation Notice**: Legacy in-memory and PostgreSQL custom SQL aggregations (`LogAnalyticsService`, `/analytics`, `/stats`) are deprecated. Real-time metrics are served via Spark Structured Streaming (`/stream`) and batch job executions are saved to PostgreSQL `batch_log_metrics` as JSONB (`/batch/history`). See [DEPRECATION_NOTICE.md](file:///home/regisx001/Data-Quality-Platform/dQul-logs/docs/DEPRECATION_NOTICE.md) for full details.
 
 ## Architecture
 

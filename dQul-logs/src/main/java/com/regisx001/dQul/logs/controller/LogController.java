@@ -22,6 +22,12 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import com.regisx001.dQul.compute.dto.logs.LogsAggregationRequest;
+import com.regisx001.dQul.logs.kafka.LogsAggregationKafkaProducer;
+
+import com.regisx001.dQul.logs.dto.batch.BatchLogMetricDto;
+import com.regisx001.dQul.logs.service.BatchLogMetricService;
+
 import java.util.UUID;
 
 @RestController
@@ -34,6 +40,47 @@ public class LogController {
 
     private final LogService logService;
     private final LogAnalyticsService logAnalyticsService;
+    private final LogsAggregationKafkaProducer aggregationKafkaProducer;
+    private final BatchLogMetricService batchLogMetricService;
+
+    /**
+     * Retrieves recent historical Spark batch analytics executions.
+     */
+    @GetMapping("/batch/history")
+    public ResponseEntity<List<BatchLogMetricDto>> getBatchHistory(
+            @RequestParam(defaultValue = "30") int limit) {
+        return ResponseEntity.ok(batchLogMetricService.getRecentBatchMetrics(limit));
+    }
+
+    /**
+     * Triggers an asynchronous Spark batch logs aggregation job by publishing
+     * a clean request event to Kafka (consumed by dQul-compute microservice).
+     */
+    @PostMapping("/aggregate")
+    public ResponseEntity<Map<String, Object>> triggerBatchAggregation(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+
+        UUID jobId = UUID.randomUUID();
+
+        // Create PENDING record in batch_log_metrics PostgreSQL table immediately
+        batchLogMetricService.createPendingBatchMetric(jobId, from, to);
+
+        LogsAggregationRequest event = LogsAggregationRequest.builder()
+                .jobId(jobId)
+                .from(from)
+                .to(to)
+                .build();
+
+        log.info("Triggering Spark batch logs aggregation for jobId={}", jobId);
+        aggregationKafkaProducer.sendAggregationRequest(event);
+
+        return ResponseEntity.accepted().body(Map.of(
+                "jobId", jobId,
+                "status", "BATCH_AGGREGATION_REQUESTED",
+                "message", "Batch logs aggregation request published to Kafka"
+        ));
+    }
 
     @GetMapping
     public ResponseEntity<LogPageDto> queryLogs(
@@ -63,6 +110,11 @@ public class LogController {
                 .build());
     }
 
+    /**
+     * @deprecated Legacy database stats endpoint. Use Realtime SSE Stream (/stream)
+     *             or Spark Batch Analytics (/batch/history) instead.
+     */
+    @Deprecated(since = "2.0", forRemoval = false)
     @GetMapping("/stats")
     public ResponseEntity<LogStatsDto> getStats() {
         return ResponseEntity.ok(logService.getLogStats());
@@ -70,10 +122,13 @@ public class LogController {
 
     /**
      * Aggregates the log store into a structured analytics model across the
-     * universal observability dimensions. Time bounds are ISO-8601 instants
-     * (e.g. {@code 2026-08-08T09:00:00Z}); granularity is an ISO-8601 duration
-     * (e.g. {@code PT1H}). Optional dimensional filters narrow the window.
+     * universal observability dimensions.
+     *
+     * @deprecated Legacy in-memory / SQL aggregation endpoint. Spark Structured Streaming
+     *             (/stream) and Spark Batch Aggregations (/batch/history, /aggregate) are now
+     *             the primary engines.
      */
+    @Deprecated(since = "2.0", forRemoval = false)
     @GetMapping("/analytics")
     public ResponseEntity<LogAnalyticsDto> getAnalytics(
             @RequestParam(required = false) String from,

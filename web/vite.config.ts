@@ -12,17 +12,20 @@ export default defineConfig({
 				runes: ({ filename }) => filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-			// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 			adapter: adapter()
 		})
 	],
 
 	server: {
 		proxy: {
+			'/api/v1/logs': {
+				// @ts-expect-error - Bun.env is available in Bun runtime
+				target: (typeof Bun !== 'undefined' && Bun.env.LOGS_API_URL) || 'http://localhost:7001',
+				changeOrigin: true
+			},
 			'/api': {
-				target: 'http://localhost:7000',
+				// @ts-expect-error - Bun.env is available in Bun runtime
+				target: (typeof Bun !== 'undefined' && Bun.env.BACKEND_API_URL) || 'http://localhost:7000',
 				changeOrigin: true
 			}
 		}
