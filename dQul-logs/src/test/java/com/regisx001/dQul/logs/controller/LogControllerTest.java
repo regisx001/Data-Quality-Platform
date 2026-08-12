@@ -42,6 +42,9 @@ class LogControllerTest {
         @MockitoBean
         private LogsAggregationKafkaProducer aggregationKafkaProducer;
 
+        @MockitoBean
+        private com.regisx001.dQul.logs.service.BatchLogMetricService batchLogMetricService;
+
         @Test
         void queryLogs_returnsPage() throws Exception {
                 LogEntry entry = LogEntry.builder()
