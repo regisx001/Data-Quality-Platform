@@ -4,6 +4,7 @@ import com.regisx001.dQul.logs.domain.LogEntry;
 import com.regisx001.dQul.logs.dto.LogQueryResultDto;
 import com.regisx001.dQul.logs.dto.LogStatsDto;
 import com.regisx001.dQul.logs.dto.analytics.LogAnalyticsDto;
+import com.regisx001.dQul.logs.kafka.LogsAggregationKafkaProducer;
 import com.regisx001.dQul.logs.service.LogAnalyticsService;
 import com.regisx001.dQul.logs.service.LogService;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class LogControllerTest {
 
         @MockitoBean
         private LogAnalyticsService logAnalyticsService;
+
+        @MockitoBean
+        private LogsAggregationKafkaProducer aggregationKafkaProducer;
 
         @Test
         void queryLogs_returnsPage() throws Exception {
