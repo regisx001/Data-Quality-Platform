@@ -68,7 +68,7 @@ SERVICES = (
 
 # category -> categories a service is most likely to emit
 SERVICE_CATEGORY_BIAS = {
-    "dQul-api": ("API", "AUTH", "SECURITY"),
+    "dQul-api": ("API", "SECURITY"),
     "dQul-ingest": ("INGESTION", "CONNECTOR", "SCHEDULER"),
     "dQul-validation": ("VALIDATION", "COMPUTE"),
     "dQul-compute": ("COMPUTE", "SCHEDULER"),
@@ -82,7 +82,6 @@ FALLBACK_CATEGORIES = (
     "VALIDATION",
     "COMPUTE",
     "CONNECTOR",
-    "AUTH",
     "SECURITY",
     "SCHEDULER",
     "DATASOURCE",
@@ -99,8 +98,9 @@ PATHS = (
     "/api/v1/quality-checks",
     "/api/v1/profiles/{id}",
     "/api/v1/lineage",
-    "/api/v1/users/{id}",
-    "/health",
+    "/api/v1/compute/health",
+    "/api/v1/logs/stream",
+    "/api/v1/logs/aggregate",
 )
 
 # logLevel -> weighted HTTP status codes (INFO/WARN lean 2xx, ERROR/FATAL lean 4xx/5xx)

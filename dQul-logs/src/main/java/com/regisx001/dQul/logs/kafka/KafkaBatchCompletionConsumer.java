@@ -25,7 +25,12 @@ public class KafkaBatchCompletionConsumer {
             return;
         }
 
-        log.info("Received Spark batch completion event for jobId={} with status={}", event.getJobId(), event.getStatus());
-        batchLogMetricService.saveBatchMetric(event);
+        try {
+            log.info("Received Spark batch completion event for jobId={} with status={}", event.getJobId(), event.getStatus());
+            batchLogMetricService.saveBatchMetric(event);
+        } catch (Exception e) {
+            log.error("Internal error persisting batch log metric for jobId={}: {}", event.getJobId(), e.getMessage(), e);
+            throw e;
+        }
     }
 }

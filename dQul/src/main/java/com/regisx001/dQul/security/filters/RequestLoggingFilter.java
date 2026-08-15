@@ -46,16 +46,31 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private void logRequest(HttpServletRequest request, HttpServletResponse response, long duration,
             boolean success) {
-        String method = request.getMethod();
         String path = request.getRequestURI();
+        int status = response.getStatus();
+
+        // Skip routine high-frequency operational noise (auth, current user profile, health checks) unless failed
+        if (isRoutineEndpoint(path) && status < 400) {
+            return;
+        }
+
+        String method = request.getMethod();
         String query = request.getQueryString();
         if (query != null && !query.isBlank()) {
             path = path + "?" + query;
         }
-        int status = response.getStatus();
         log.info("HTTP {} {} -> {} ({} ms) ip={} userAgent={} success={}",
                 method, path, status, duration, clientIp(request), sanitize(request.getHeader("User-Agent")),
                 success);
+    }
+
+    private boolean isRoutineEndpoint(String path) {
+        if (path == null) return false;
+        return path.startsWith("/api/v1/auth")
+                || path.equals("/health")
+                || path.startsWith("/actuator")
+                || path.contains("/swagger")
+                || path.contains("/v3/api-docs");
     }
 
     private String clientIp(HttpServletRequest request) {
