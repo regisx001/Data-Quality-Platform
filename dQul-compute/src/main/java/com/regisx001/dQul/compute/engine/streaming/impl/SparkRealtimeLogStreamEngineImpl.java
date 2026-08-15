@@ -42,6 +42,18 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
     @Value("${KAFKA_TOPIC_PLATFORM_LOGS:platform-logs-topic}")
     private String logsTopic;
 
+    @Value("${spark.streaming.window-duration:5 seconds}")
+    private String windowDuration;
+
+    @Value("${spark.streaming.watermark-duration:10 seconds}")
+    private String watermarkDuration;
+
+    @Value("${spark.streaming.trigger-interval:5 seconds}")
+    private String triggerInterval;
+
+    @Value("${spark.streaming.window-seconds:5.0}")
+    private double windowSeconds;
+
     private StreamingQuery activeQuery;
 
     public SparkRealtimeLogStreamEngineImpl(SparkSession sparkSession,
@@ -59,7 +71,8 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
             return;
         }
 
-        log.info("Starting Real-time Spark Structured Streaming query on topic='{}', bootstrapServers='{}'", logsTopic, bootstrapServers);
+        log.info("Starting Real-time Spark Structured Streaming query on topic='{}', bootstrapServers='{}', windowDuration='{}', triggerInterval='{}'",
+                logsTopic, bootstrapServers, windowDuration, triggerInterval);
 
         try {
             StructType logSchema = new StructType(new StructField[]{
@@ -85,9 +98,9 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
                     .filter(functions.col("timestamp").isNotNull());
 
             Dataset<Row> windowedMetrics = parsedLogs
-                    .withWatermark("timestamp", "10 seconds")
+                    .withWatermark("timestamp", watermarkDuration)
                     .groupBy(
-                            functions.window(functions.col("timestamp"), "5 seconds"),
+                            functions.window(functions.col("timestamp"), windowDuration),
                             functions.col("logLevel")
                     )
                     .agg(
@@ -97,7 +110,7 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
 
             activeQuery = windowedMetrics.writeStream()
                     .outputMode(OutputMode.Update())
-                    .trigger(Trigger.ProcessingTime("5 seconds"))
+                    .trigger(Trigger.ProcessingTime(triggerInterval))
                     .foreachBatch((org.apache.spark.api.java.function.VoidFunction2<Dataset<Row>, Long>) (batchDf, batchId) -> processBatchAndPublishRedis(batchDf, batchId))
                     .start();
 
@@ -160,7 +173,8 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
 
             for (Map<String, Object> w : windowMap.values()) {
                 long totalLogs = (long) w.get("totalLogs");
-                double throughput = totalLogs / 5.0; // 5-second tumbling window
+                double durationSec = windowSeconds > 0 ? windowSeconds : 5.0;
+                double throughput = totalLogs / durationSec; // 5-second tumbling window
 
                 @SuppressWarnings("unchecked")
                 Map<String, Long> levelCounts = (Map<String, Long>) w.get("levelCounts");
