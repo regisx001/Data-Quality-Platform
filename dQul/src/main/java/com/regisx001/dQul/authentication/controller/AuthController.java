@@ -55,9 +55,6 @@ public class AuthController {
                     statusOf(e), "REGISTRATION_FAILED", metadata("reason", reasonOf(e)));
             throw e;
         }
-        emitAuthLog("INFO", "Registration succeeded", "/api/v1/auth/register",
-                HttpStatus.CREATED.value(), "REGISTRATION_SUCCEEDED",
-                metadata("userId", userId(response)));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -78,9 +75,6 @@ public class AuthController {
                     metadata("reason", "INVALID_CREDENTIALS", "loginMethod", loginMethod));
             throw e;
         }
-        emitAuthLog("INFO", "Login succeeded", "/api/v1/auth/login",
-                HttpStatus.OK.value(), "LOGIN_SUCCEEDED",
-                metadata("userId", userId(response), "loginMethod", loginMethod));
         return ResponseEntity.ok(response);
     }
 

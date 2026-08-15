@@ -24,7 +24,12 @@ public class KafkaLogConsumer {
             log.warn("Received null log event; skipping");
             return;
         }
-        logService.saveLog(dto);
-        log.info("Persisted log event for traceId [{}]", dto.getTraceId());
+        try {
+            logService.saveLog(dto);
+            log.debug("Persisted log event for traceId [{}]", dto.getTraceId());
+        } catch (Exception e) {
+            log.error("Internal error persisting log event for traceId [{}]: {}", dto.getTraceId(), e.getMessage(), e);
+            throw e;
+        }
     }
 }

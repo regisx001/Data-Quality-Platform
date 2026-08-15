@@ -115,7 +115,7 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
                 resultMap.put(key, count);
             }
         } catch (Exception e) {
-            log.warn("Failed to extract group counts for column '{}': {}", colName, e.getMessage());
+            log.error("Failed to extract group counts for column '{}': {}", colName, e.getMessage(), e);
         }
         return resultMap;
     }
@@ -143,23 +143,27 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
                     .collectAsList();
 
             for (Row row : topErrors) {
-                String service = serviceCol != null ? (row.get(0) != null ? row.get(0).toString() : "UNKNOWN") : "N/A";
-                int msgIndex = serviceCol != null ? (categoryCol != null ? 2 : 1) : (categoryCol != null ? 1 : 0);
-                int categoryIndex = serviceCol != null ? 1 : 0;
+                int idx = 0;
+                String sName = serviceCol != null ? (row.get(idx) != null ? row.getString(idx) : "UNKNOWN") : "UNKNOWN";
+                if (serviceCol != null) idx++;
 
-                String category = categoryCol != null ? (row.get(categoryIndex) != null ? row.get(categoryIndex).toString() : "GENERAL") : "GENERAL";
-                String msg = row.get(msgIndex) != null ? row.get(msgIndex).toString() : "";
-                long count = row.getLong(row.length() - 1);
+                String cat = categoryCol != null ? (row.get(idx) != null ? row.getString(idx) : "UNKNOWN") : "UNKNOWN";
+                if (categoryCol != null) idx++;
+
+                String msg = row.get(idx) != null ? row.getString(idx) : "UNKNOWN";
+                idx++;
+
+                long count = row.getLong(idx);
 
                 errorList.add(LogsAggregationResultDto.ErrorLogSummaryDto.builder()
-                        .serviceName(service)
-                        .category(category)
+                        .serviceName(sName)
+                        .category(cat)
                         .message(msg)
                         .count(count)
                         .build());
             }
         } catch (Exception e) {
-            log.warn("Failed to extract top errors: {}", e.getMessage());
+            log.error("Failed to extract top error messages: {}", e.getMessage(), e);
         }
 
         return errorList;
