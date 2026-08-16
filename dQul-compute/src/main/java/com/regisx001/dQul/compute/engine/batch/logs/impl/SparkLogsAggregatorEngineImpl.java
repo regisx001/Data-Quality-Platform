@@ -33,11 +33,15 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
 
         List<String> colList = Arrays.asList(df.columns());
 
-        // Resolve column names (supporting both snake_case from DB and camelCase from JSON/CSV)
-        String levelCol = colList.contains("log_level") ? "log_level" : (colList.contains("logLevel") ? "logLevel" : null);
-        String serviceCol = colList.contains("service_name") ? "service_name" : (colList.contains("serviceName") ? "serviceName" : null);
+        // Resolve column names (supporting both snake_case from DB and camelCase from
+        // JSON/CSV)
+        String levelCol = colList.contains("log_level") ? "log_level"
+                : (colList.contains("logLevel") ? "logLevel" : null);
+        String serviceCol = colList.contains("service_name") ? "service_name"
+                : (colList.contains("serviceName") ? "serviceName" : null);
         String categoryCol = colList.contains("category") ? "category" : null;
-        String execTimeCol = colList.contains("execution_time_ms") ? "execution_time_ms" : (colList.contains("executionTimeMs") ? "executionTimeMs" : null);
+        String execTimeCol = colList.contains("execution_time_ms") ? "execution_time_ms"
+                : (colList.contains("executionTimeMs") ? "executionTimeMs" : null);
         String tsCol = colList.contains("timestamp") ? "timestamp" : null;
         String msgCol = colList.contains("message") ? "message" : null;
 
@@ -54,15 +58,16 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
         if (execTimeCol != null && totalCount > 0) {
             Row statsRow = df.select(
                     functions.avg(functions.col(execTimeCol)).alias("avg_exec"),
-                    functions.max(functions.col(execTimeCol)).alias("max_exec")
-            ).first();
+                    functions.max(functions.col(execTimeCol)).alias("max_exec")).first();
 
             if (statsRow != null) {
                 Number avgNum = statsRow.getAs("avg_exec");
-                if (avgNum != null) avgExecutionTime = avgNum.doubleValue();
+                if (avgNum != null)
+                    avgExecutionTime = avgNum.doubleValue();
 
                 Number maxNum = statsRow.getAs("max_exec");
-                if (maxNum != null) maxExecutionTime = maxNum.longValue();
+                if (maxNum != null)
+                    maxExecutionTime = maxNum.longValue();
             }
         }
 
@@ -72,8 +77,7 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
         if (tsCol != null && totalCount > 0) {
             Row tsRow = df.select(
                     functions.min(functions.col(tsCol)).cast("string").alias("min_ts"),
-                    functions.max(functions.col(tsCol)).cast("string").alias("max_ts")
-            ).first();
+                    functions.max(functions.col(tsCol)).cast("string").alias("max_ts")).first();
 
             if (tsRow != null) {
                 minTimestamp = tsRow.getAs("min_ts");
@@ -81,7 +85,8 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
             }
         }
 
-        List<LogsAggregationResultDto.ErrorLogSummaryDto> topErrorMessages = extractTopErrors(df, levelCol, serviceCol, categoryCol, msgCol);
+        List<LogsAggregationResultDto.ErrorLogSummaryDto> topErrorMessages = extractTopErrors(df, levelCol, serviceCol,
+                categoryCol, msgCol);
 
         return LogsAggregationResultDto.builder()
                 .jobId(request.getJobId())
@@ -100,7 +105,8 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
 
     private Map<String, Long> extractGroupCounts(Dataset<Row> df, String colName) {
         Map<String, Long> resultMap = new HashMap<>();
-        if (colName == null) return resultMap;
+        if (colName == null)
+            return resultMap;
 
         try {
             List<Row> rows = df.groupBy(colName)
@@ -121,19 +127,22 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
     }
 
     private List<LogsAggregationResultDto.ErrorLogSummaryDto> extractTopErrors(Dataset<Row> df,
-                                                                               String levelCol,
-                                                                               String serviceCol,
-                                                                               String categoryCol,
-                                                                               String msgCol) {
+            String levelCol,
+            String serviceCol,
+            String categoryCol,
+            String msgCol) {
         List<LogsAggregationResultDto.ErrorLogSummaryDto> errorList = new ArrayList<>();
-        if (levelCol == null || msgCol == null) return errorList;
+        if (levelCol == null || msgCol == null)
+            return errorList;
 
         try {
             Dataset<Row> errorDf = df.filter(functions.upper(functions.col(levelCol)).equalTo("ERROR"));
 
             List<Column> groupCols = new ArrayList<>();
-            if (serviceCol != null) groupCols.add(functions.col(serviceCol));
-            if (categoryCol != null) groupCols.add(functions.col(categoryCol));
+            if (serviceCol != null)
+                groupCols.add(functions.col(serviceCol));
+            if (categoryCol != null)
+                groupCols.add(functions.col(categoryCol));
             groupCols.add(functions.col(msgCol));
 
             List<Row> topErrors = errorDf.groupBy(groupCols.toArray(new Column[0]))
@@ -145,10 +154,12 @@ public class SparkLogsAggregatorEngineImpl implements LogsAggregatorEngine {
             for (Row row : topErrors) {
                 int idx = 0;
                 String sName = serviceCol != null ? (row.get(idx) != null ? row.getString(idx) : "UNKNOWN") : "UNKNOWN";
-                if (serviceCol != null) idx++;
+                if (serviceCol != null)
+                    idx++;
 
                 String cat = categoryCol != null ? (row.get(idx) != null ? row.getString(idx) : "UNKNOWN") : "UNKNOWN";
-                if (categoryCol != null) idx++;
+                if (categoryCol != null)
+                    idx++;
 
                 String msg = row.get(idx) != null ? row.getString(idx) : "UNKNOWN";
                 idx++;
