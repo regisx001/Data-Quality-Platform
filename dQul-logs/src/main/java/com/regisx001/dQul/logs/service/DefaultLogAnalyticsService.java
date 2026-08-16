@@ -312,15 +312,19 @@ public class DefaultLogAnalyticsService implements LogAnalyticsService {
             }
         }
 
-        long total = Math.max(1L, logs.size());
         long c2 = countStatusRange(statusCounts, 200, 299);
         long c3 = countStatusRange(statusCounts, 300, 399);
         long c4 = countStatusRange(statusCounts, 400, 499);
         long c5 = countStatusRange(statusCounts, 500, 599);
 
+        long totalHttp = c2 + c3 + c4 + c5;
+        if (totalHttp == 0 && !methodCounts.isEmpty()) {
+            totalHttp = methodCounts.values().stream().mapToLong(Long::longValue).sum();
+        }
+
         List<EndpointAnalyticsDto> endpoints = endpointGroups.entrySet().stream()
                 .map(en -> {
-                    String[] parts = en.getKey().split("\\u0001", 2);
+                    String[] parts = en.getKey().split("\u0001", 2);
                     String method = parts[0];
                     String path = parts.length > 1 ? parts[1] : "";
                     List<Long> lats = latencies(en.getValue());
@@ -331,26 +335,32 @@ public class DefaultLogAnalyticsService implements LogAnalyticsService {
                             .path(path)
                             .requestCount(n)
                             .errorCount(err)
-                            .errorRatePercentage(round(err * 100.0 / n, 2))
+                            .errorRatePercentage(round(err * 100.0 / Math.max(1, n), 2))
                             .averageLatencyMs(round(avg(lats), 2))
                             .p95LatencyMs(round(percentile(lats, 95), 2))
                             .p99LatencyMs(round(percentile(lats, 99), 2))
                             .maxLatencyMs(round(max(lats), 2))
                             .build();
                 })
-                .sorted(Comparator.comparingLong((EndpointAnalyticsDto ep) -> ep.getRequestCount()).reversed())
+                .sorted(Comparator.comparingLong((EndpointAnalyticsDto e) -> e.getRequestCount()).reversed())
                 .collect(Collectors.toList());
 
+        if (totalHttp == 0 && !endpoints.isEmpty()) {
+            totalHttp = endpoints.stream().mapToLong(EndpointAnalyticsDto::getRequestCount).sum();
+        }
+
+        long denom = Math.max(1L, totalHttp);
+
         return HttpAnalyticsDto.builder()
-                .totalRequests(total)
+                .totalRequests(totalHttp)
                 .count2xx(c2)
                 .count3xx(c3)
                 .count4xx(c4)
                 .count5xx(c5)
-                .rate2xx(round(c2 * 100.0 / total, 2))
-                .rate3xx(round(c3 * 100.0 / total, 2))
-                .rate4xx(round(c4 * 100.0 / total, 2))
-                .rate5xx(round(c5 * 100.0 / total, 2))
+                .rate2xx(totalHttp > 0 ? round(c2 * 100.0 / denom, 2) : 0.0)
+                .rate3xx(totalHttp > 0 ? round(c3 * 100.0 / denom, 2) : 0.0)
+                .rate4xx(totalHttp > 0 ? round(c4 * 100.0 / denom, 2) : 0.0)
+                .rate5xx(totalHttp > 0 ? round(c5 * 100.0 / denom, 2) : 0.0)
                 .statusCounts(statusCounts)
                 .methodCounts(methodCounts)
                 .endpoints(endpoints)

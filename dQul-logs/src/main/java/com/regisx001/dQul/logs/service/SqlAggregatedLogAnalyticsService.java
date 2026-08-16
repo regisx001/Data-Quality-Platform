@@ -327,22 +327,31 @@ public class SqlAggregatedLogAnalyticsService implements LogAnalyticsService {
 
         endpoints.sort(Comparator.comparingLong(EndpointAnalyticsDto::getRequestCount).reversed());
 
-        long totalReq = Math.max(1L, totalLogs);
         long c2 = countStatusRange(statusCounts, 200, 299);
         long c3 = countStatusRange(statusCounts, 300, 399);
         long c4 = countStatusRange(statusCounts, 400, 499);
         long c5 = countStatusRange(statusCounts, 500, 599);
 
+        long totalHttp = c2 + c3 + c4 + c5;
+        if (totalHttp == 0 && !methodCounts.isEmpty()) {
+            totalHttp = methodCounts.values().stream().mapToLong(Long::longValue).sum();
+        }
+        if (totalHttp == 0 && !endpoints.isEmpty()) {
+            totalHttp = endpoints.stream().mapToLong(EndpointAnalyticsDto::getRequestCount).sum();
+        }
+
+        long denom = Math.max(1L, totalHttp);
+
         return HttpAnalyticsDto.builder()
-                .totalRequests(totalReq)
+                .totalRequests(totalHttp)
                 .count2xx(c2)
                 .count3xx(c3)
                 .count4xx(c4)
                 .count5xx(c5)
-                .rate2xx(round(c2 * 100.0 / totalReq, 2))
-                .rate3xx(round(c3 * 100.0 / totalReq, 2))
-                .rate4xx(round(c4 * 100.0 / totalReq, 2))
-                .rate5xx(round(c5 * 100.0 / totalReq, 2))
+                .rate2xx(totalHttp > 0 ? round(c2 * 100.0 / denom, 2) : 0.0)
+                .rate3xx(totalHttp > 0 ? round(c3 * 100.0 / denom, 2) : 0.0)
+                .rate4xx(totalHttp > 0 ? round(c4 * 100.0 / denom, 2) : 0.0)
+                .rate5xx(totalHttp > 0 ? round(c5 * 100.0 / denom, 2) : 0.0)
                 .statusCounts(statusCounts)
                 .methodCounts(methodCounts)
                 .endpoints(endpoints)
