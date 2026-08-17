@@ -58,6 +58,18 @@ spring:
       use-key-prefix: true
 
 dqul:
+  logging:
+    http:
+      enabled: ${DQUL_HTTP_LOGGING_ENABLED:true}
+      exclude-paths:
+        - /health
+        - /actuator
+        - /swagger
+        - /v3/api-docs
+        - /api/v1/logs/stream
+        - .ico
+        - .js
+        - .css
   kafka:
     topics:
       logs-aggregate-request: ${KAFKA_TOPIC_LOGS_AGGREGATE_REQUEST:dqul.logs.aggregate.request}

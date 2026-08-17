@@ -46,6 +46,18 @@ spring:
       missing-topics-fatal: false
 
 dqul:
+  logging:
+    http:
+      enabled: ${DQUL_HTTP_LOGGING_ENABLED:true}
+      exclude-paths:
+        - /health
+        - /actuator
+        - /swagger
+        - /v3/api-docs
+        - /api/v1/auth/me
+        - .ico
+        - .js
+        - .css
   kafka:
     topics:
       platform-logs: ${KAFKA_TOPIC_PLATFORM_LOGS:platform-logs-topic}

@@ -72,6 +72,8 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .fieldErrors(fieldErrors)
                 .build();
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(body);
     }
 }

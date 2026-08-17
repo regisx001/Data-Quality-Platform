@@ -59,6 +59,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.regisx001.dQul.common.service.LogsProducer;
 import com.regisx001.dQul.connector.ConnectorConfig;
 import com.regisx001.dQul.connector.ConnectorFactory;
 import com.regisx001.dQul.connector.DataSourceConnector;
@@ -93,6 +94,7 @@ public class DatasetServiceImpl implements DatasetService {
     private final ObjectMapper objectMapper;
     private final MinioStorageService minioStorageService;
     private final ProfileRequestKafkaProducer profileRequestKafkaProducer;
+    private final LogsProducer logsProducer;
 
     public DatasetServiceImpl(
             DatasetRepository datasetRepository,
@@ -101,7 +103,8 @@ public class DatasetServiceImpl implements DatasetService {
             ConnectorFactory connectorFactory,
             ObjectMapper objectMapper,
             MinioStorageService minioStorageService,
-            ProfileRequestKafkaProducer profileRequestKafkaProducer) {
+            ProfileRequestKafkaProducer profileRequestKafkaProducer,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) LogsProducer logsProducer) {
         this.datasetRepository = datasetRepository;
         this.columnRepository = columnRepository;
         this.profileRepository = profileRepository;
@@ -109,6 +112,7 @@ public class DatasetServiceImpl implements DatasetService {
         this.objectMapper = objectMapper;
         this.minioStorageService = minioStorageService;
         this.profileRequestKafkaProducer = profileRequestKafkaProducer;
+        this.logsProducer = logsProducer;
     }
 
     @Override
@@ -292,17 +296,62 @@ public class DatasetServiceImpl implements DatasetService {
     @Transactional
     public DatasetDetailResponse profileDataset(UUID id) {
         Dataset dataset = resolveDataset(id);
+        long start = System.currentTimeMillis();
         try {
             DatasetProfileRequest request = buildProfileRequest(dataset);
             profileRequestKafkaProducer.sendProfileRequest(request);
             log.info("Published async profiling trigger event to Kafka for datasetId={}", dataset.getId());
+            emitProfilingLog(dataset, System.currentTimeMillis() - start, true, null);
         } catch (Exception e) {
             log.warn(
                     "Failed to publish async profiling request to Kafka for dataset '{}', fallback to embedded engine: {}",
                     dataset.getName(), e.getMessage());
-            profileDatasetPipeline(dataset);
+            try {
+                profileDatasetPipeline(dataset);
+                emitProfilingLog(dataset, System.currentTimeMillis() - start, true, null);
+            } catch (Exception ex) {
+                emitProfilingLog(dataset, System.currentTimeMillis() - start, false, ex.getMessage());
+                throw ex;
+            }
         }
         return mapToDetailResponse(dataset);
+    }
+
+    private void emitProfilingLog(Dataset dataset, long duration, boolean success, String errorMessage) {
+        if (logsProducer == null) return;
+        try {
+            String logLevel = success ? "INFO" : "ERROR";
+            String path = String.format("/api/v1/datasets/%s/profile", dataset.getId());
+            String message = success
+                    ? String.format("Dataset profiling triggered for '%s' (%d columns) in %d ms",
+                            dataset.getName(), dataset.getColumns() != null ? dataset.getColumns().size() : 0, duration)
+                    : String.format("Dataset profiling failed for '%s': %s", dataset.getName(), errorMessage);
+
+            Map<String, Object> meta = new HashMap<>();
+            meta.put("datasetId", dataset.getId().toString());
+            meta.put("datasetName", dataset.getName());
+            if (dataset.getColumns() != null) {
+                meta.put("columnCount", dataset.getColumns().size());
+            }
+            if (errorMessage != null) meta.put("error", errorMessage);
+
+            com.regisx001.dQul.common.dto.LogEvent eventLog = com.regisx001.dQul.common.dto.LogEvent.builder()
+                    .serviceName("dQul-api")
+                    .logLevel(logLevel)
+                    .category("PROFILING")
+                    .message(message)
+                    .path(path)
+                    .httpMethod("POST")
+                    .statusCode(success ? 200 : 500)
+                    .executionTimeMs(duration)
+                    .metadata(objectMapper.writeValueAsString(meta))
+                    .timestamp(java.time.Instant.now())
+                    .build();
+
+            logsProducer.produce(eventLog);
+        } catch (Exception e) {
+            log.debug("Failed to emit profiling log event: {}", e.getMessage());
+        }
     }
 
     private DatasetProfileRequest buildProfileRequest(Dataset dataset) {

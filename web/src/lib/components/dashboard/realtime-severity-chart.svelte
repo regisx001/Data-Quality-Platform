@@ -19,7 +19,7 @@
 	let chartData = $derived(
 		[
 			{ level: "INFO", events: infoCount, color: "var(--chart-1)" },
-			{ level: "WARN", events: warnCount, color: "var(--chart-2)" },
+			{ level: "WARN", events: warnCount, color: "var(--chart-3)" },
 			{ level: "ERROR", events: errorCount, color: "var(--chart-5)" }
 		].filter((item) => item.events > 0)
 	);
@@ -27,7 +27,7 @@
 	const chartConfig = {
 		events: { label: "Log Events" },
 		INFO: { label: "INFO", color: "var(--chart-1)" },
-		WARN: { label: "WARN", color: "var(--chart-2)" },
+		WARN: { label: "WARN", color: "var(--chart-3)" },
 		ERROR: { label: "ERROR", color: "var(--chart-5)" }
 	} satisfies Chart.ChartConfig;
 </script>
