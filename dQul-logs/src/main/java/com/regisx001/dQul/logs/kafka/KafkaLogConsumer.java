@@ -17,7 +17,8 @@ public class KafkaLogConsumer {
 
     @KafkaListener(
         topics = KafkaConfig.LOGS_TOPIC,
-        groupId = "${spring.kafka.consumer.group-id:dqul-logs-group}"
+        groupId = "${spring.kafka.consumer.group-id:dqul-logs-group}",
+        containerFactory = "kafkaListenerContainerFactory"
     )
     public void consumeLogEvent(LogIngestionDto dto) {
         if (dto == null) {

@@ -46,7 +46,7 @@
 
 	const chartConfig = {
 		info: { label: "INFO", color: "var(--chart-1)" },
-		warn: { label: "WARN", color: "var(--chart-2)" },
+		warn: { label: "WARN", color: "var(--chart-3)" },
 		error: { label: "ERROR", color: "var(--chart-5)" },
 	} satisfies Chart.ChartConfig;
 </script>

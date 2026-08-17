@@ -36,7 +36,7 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    @Value("${spring.kafka.bootstrap-servers:kafka:9092}")
+    @Value("${spring.kafka.bootstrap-servers:localhost:9093}")
     private String bootstrapServers;
 
     @Value("${KAFKA_TOPIC_PLATFORM_LOGS:platform-logs-topic}")
@@ -80,7 +80,7 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
                     new StructField("logLevel", DataTypes.StringType, true, Metadata.empty()),
                     new StructField("category", DataTypes.StringType, true, Metadata.empty()),
                     new StructField("executionTimeMs", DataTypes.LongType, true, Metadata.empty()),
-                    new StructField("timestamp", DataTypes.TimestampType, true, Metadata.empty())
+                    new StructField("timestamp", DataTypes.StringType, true, Metadata.empty())
             });
 
             Dataset<Row> rawStream = sparkSession.readStream()
@@ -95,12 +95,12 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
                     .selectExpr("CAST(value AS STRING) as json_payload")
                     .select(functions.from_json(functions.col("json_payload"), logSchema).alias("data"))
                     .select("data.*")
-                    .filter(functions.col("timestamp").isNotNull());
+                    .withColumn("event_time", functions.current_timestamp());
 
             Dataset<Row> windowedMetrics = parsedLogs
-                    .withWatermark("timestamp", watermarkDuration)
+                    .withWatermark("event_time", watermarkDuration)
                     .groupBy(
-                            functions.window(functions.col("timestamp"), windowDuration),
+                            functions.window(functions.col("event_time"), windowDuration),
                             functions.col("logLevel")
                     )
                     .agg(
@@ -128,6 +128,8 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
         try {
             List<Row> rows = batchDf.collectAsList();
             if (rows.isEmpty()) return;
+
+            log.info("Spark Streaming Batch {} processed: {} aggregation row(s) found", batchId, rows.size());
 
             Map<String, Map<String, Object>> windowMap = new HashMap<>();
 
@@ -195,7 +197,7 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
 
                 String jsonMessage = objectMapper.writeValueAsString(dto);
                 redisTemplate.convertAndSend(REDIS_REALTIME_CHANNEL, jsonMessage);
-                log.debug("Published realtime window metric to Redis channel {}: totalLogs={}, throughput={}/s",
+                log.info("Published realtime window metric to Redis channel {}: totalLogs={}, throughput={}/s",
                         REDIS_REALTIME_CHANNEL, totalLogs, throughput);
             }
         } catch (Exception e) {
@@ -209,10 +211,11 @@ public class SparkRealtimeLogStreamEngineImpl implements RealtimeLogStreamEngine
             try {
                 log.info("Stopping Real-time Spark Structured Streaming query...");
                 activeQuery.stop();
-                activeQuery = null;
-                log.info("Spark Structured Streaming query stopped.");
+                activeQuery.awaitTermination(5000);
             } catch (Exception e) {
-                log.error("Error stopping Spark Structured Streaming query: {}", e.getMessage(), e);
+                log.warn("Error stopping streaming query: {}", e.getMessage());
+            } finally {
+                activeQuery = null;
             }
         }
     }
