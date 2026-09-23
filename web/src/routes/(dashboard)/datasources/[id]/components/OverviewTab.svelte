@@ -17,8 +17,6 @@
 	import FileText from "@lucide/svelte/icons/file-text";
 	import Plus from "@lucide/svelte/icons/plus";
 	import Trash2 from "@lucide/svelte/icons/trash-2";
-	import Sparkles from "@lucide/svelte/icons/sparkles";
-	import Eye from "@lucide/svelte/icons/eye";
 	import { cn } from "$lib/utils";
 	import type { Datasource, DatasetDescriptor, Dataset } from "$lib/server/api";
 
@@ -250,31 +248,16 @@
 										>
 										<td class="py-3 px-4 font-mono text-muted-foreground text-[11px]">{dataset.id}</td>
 										<td class="py-3 px-4 text-right">
-											<div class="inline-flex items-center justify-end gap-1">
-												<a
-													href={`/datasets/${dataset.id}`}
-													class="inline-flex items-center justify-center h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors gap-1"
-													title={isDatasetProfiled(dataset) ? "Inspect dataset schema & rules" : "Run profiler for this dataset"}
-												>
-													{#if !isDatasetProfiled(dataset)}
-														<Sparkles class="size-3 text-amber-500" />
-														<span class="text-[11px] font-medium text-amber-600 dark:text-amber-400">Profile</span>
-													{:else}
-														<Eye class="size-3 text-muted-foreground" />
-														<span class="text-[11px]">Inspect</span>
-													{/if}
-												</a>
-												<Button
-													type="button"
-													variant="ghost"
-													size="icon"
-													onclick={() => (pendingRemoveDataset = dataset)}
-													title={`Remove dataset '${dataset.name}' from datasource`}
-													class="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-md"
-												>
-													<Trash2 class="size-3.5" />
-												</Button>
-											</div>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												onclick={() => (pendingRemoveDataset = dataset)}
+												title={`Remove dataset '${dataset.name}' from datasource`}
+												class="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-md"
+											>
+												<Trash2 class="size-3.5" />
+											</Button>
 										</td>
 									</tr>
 								{/each}
