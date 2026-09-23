@@ -38,7 +38,7 @@ public class MinioStorageService {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "dataset.csv";
         String sanitizedFilename = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
         String uniqueFilename = UUID.randomUUID() + "_" + sanitizedFilename;
-        String bucketName = minioProperties.getBucket() != null ? minioProperties.getBucket() : "csv-uploads";
+        String bucketName = minioProperties.getBucket() != null ? minioProperties.getBucket() : "dqul-bucket";
 
         // 1. Save local copy for Spark and local file system access
         Path uploadDir = Paths.get("uploads", "csv").toAbsolutePath().normalize();
@@ -51,7 +51,8 @@ public class MinioStorageService {
             }
         } catch (Exception e) {
             log.error("Failed to save local file copy: {}", e.getMessage(), e);
-            throw new com.regisx001.dQul.storage.exception.StorageOperationException("Could not save uploaded CSV file locally: " + e.getMessage(), e);
+            throw new com.regisx001.dQul.storage.exception.StorageOperationException(
+                    "Could not save uploaded CSV file locally: " + e.getMessage(), e);
         }
 
         // 2. Upload to MinIO object storage
@@ -125,13 +126,14 @@ public class MinioStorageService {
                 Path path = Paths.get(filePath).toAbsolutePath().normalize();
                 String fileName = path.getFileName().toString();
                 String inferredObjectName = "csv/" + fileName;
-                String bucket = minioProperties.getBucket() != null ? minioProperties.getBucket() : "csv-uploads";
+                String bucket = minioProperties.getBucket() != null ? minioProperties.getBucket() : "dqul-bucket";
                 minioClient.removeObject(
                         io.minio.RemoveObjectArgs.builder()
                                 .bucket(bucket)
                                 .object(inferredObjectName)
                                 .build());
-                log.info("Successfully deleted inferred MinIO object '{}' from bucket '{}'", inferredObjectName, bucket);
+                log.info("Successfully deleted inferred MinIO object '{}' from bucket '{}'", inferredObjectName,
+                        bucket);
             } catch (Exception e) {
                 log.warn("Could not delete inferred MinIO object for '{}': {}", filePath, e.getMessage());
             }
@@ -143,8 +145,7 @@ public class MinioStorageService {
                 io.minio.GetObjectArgs.builder()
                         .bucket(bucketName)
                         .object(objectName)
-                        .build()
-        );
+                        .build());
     }
 
     public record FileUploadResult(

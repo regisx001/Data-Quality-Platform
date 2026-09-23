@@ -17,8 +17,10 @@
 	import FileText from "@lucide/svelte/icons/file-text";
 	import Plus from "@lucide/svelte/icons/plus";
 	import Trash2 from "@lucide/svelte/icons/trash-2";
+	import Sparkles from "@lucide/svelte/icons/sparkles";
+	import Eye from "@lucide/svelte/icons/eye";
 	import { cn } from "$lib/utils";
-	import type { Datasource, DatasetDescriptor } from "$lib/server/api";
+	import type { Datasource, DatasetDescriptor, Dataset } from "$lib/server/api";
 
 	let {
 		datasource,
@@ -57,6 +59,19 @@
 	}
 
 	let isCsvDatasource = $derived(datasource.type.toUpperCase() === "CSV");
+ 
+	function isDatasetProfiled(ds: Dataset): boolean {
+		if (ds.lastValidated) return true;
+		if (ds.columns && ds.columns.length > 0) {
+			return ds.columns.some(
+				(col: any) =>
+					(col.profiles && col.profiles.length > 0) ||
+					col.profiledAt ||
+					col.nullCount !== undefined
+			);
+		}
+		return false;
+	}
 
 	function toggleSelectAll(event: Event) {
 		const checked = (event.target as HTMLInputElement).checked;
@@ -187,6 +202,7 @@
 							<thead>
 								<tr class="border-b border-border bg-muted/30 font-mono text-muted-foreground">
 									<th class="py-3 px-4 font-medium">Dataset Name</th>
+									<th class="py-3 px-4 font-medium">Profile Status</th>
 									<th class="py-3 px-4 font-medium">Description</th>
 									<th class="py-3 px-4 font-medium">Row Count</th>
 									<th class="py-3 px-4 font-medium">Dataset ID</th>
@@ -201,8 +217,31 @@
 												href={`/datasets/${dataset.id}`}
 												class="hover:underline font-semibold text-primary inline-flex items-center gap-1.5"
 											>
-												<TableProperties class="size-3.5 text-primary/70" />
-												<span>{dataset.name}</span>
+												<TableProperties class="size-3.5 text-primary/70 shrink-0" />
+												<span class="truncate max-w-sm" title={dataset.name}>{dataset.name}</span>
+											</a>
+										</td>
+										<td class="py-3 px-4">
+											<a
+												href={`/datasets/${dataset.id}`}
+												class="inline-block transition-opacity hover:opacity-80"
+												title={isDatasetProfiled(dataset)
+													? (dataset.lastValidated ? `Profiled: ${new Date(dataset.lastValidated).toLocaleString()}` : "Profiled")
+													: "Not yet profiled. Click to view and run profiler."}
+											>
+												{#if isDatasetProfiled(dataset)}
+													<span
+														class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+													>
+														Profiled
+													</span>
+												{:else}
+													<span
+														class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+													>
+														Not Profiled
+													</span>
+												{/if}
 											</a>
 										</td>
 										<td class="py-3 px-4 text-muted-foreground">{dataset.description || "—"}</td>
@@ -211,16 +250,31 @@
 										>
 										<td class="py-3 px-4 font-mono text-muted-foreground text-[11px]">{dataset.id}</td>
 										<td class="py-3 px-4 text-right">
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												onclick={() => (pendingRemoveDataset = dataset)}
-												title={`Remove dataset '${dataset.name}' from datasource`}
-												class="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-md"
-											>
-												<Trash2 class="size-3.5" />
-											</Button>
+											<div class="inline-flex items-center justify-end gap-1">
+												<a
+													href={`/datasets/${dataset.id}`}
+													class="inline-flex items-center justify-center h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors gap-1"
+													title={isDatasetProfiled(dataset) ? "Inspect dataset schema & rules" : "Run profiler for this dataset"}
+												>
+													{#if !isDatasetProfiled(dataset)}
+														<Sparkles class="size-3 text-amber-500" />
+														<span class="text-[11px] font-medium text-amber-600 dark:text-amber-400">Profile</span>
+													{:else}
+														<Eye class="size-3 text-muted-foreground" />
+														<span class="text-[11px]">Inspect</span>
+													{/if}
+												</a>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													onclick={() => (pendingRemoveDataset = dataset)}
+													title={`Remove dataset '${dataset.name}' from datasource`}
+													class="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-md"
+												>
+													<Trash2 class="size-3.5" />
+												</Button>
+											</div>
 										</td>
 									</tr>
 								{/each}

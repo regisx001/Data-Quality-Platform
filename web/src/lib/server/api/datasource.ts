@@ -8,8 +8,13 @@ export interface Dataset {
     id: string;
     name: string;
     description?: string;
+    type?: string;
+    status?: string;
     rowCount?: number;
+    lastDiscovered?: string | null;
+    lastValidated?: string | null;
     createdAt?: string;
+    columns?: any[];
 }
 
 export interface Datasource {
