@@ -11,3 +11,5 @@
 <Toaster richColors position="top-right" />
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 {@render children()}
+
+<Toaster/>

@@ -15,6 +15,7 @@
 	import Radio from "@lucide/svelte/icons/radio";
 	import BarChart3 from "@lucide/svelte/icons/bar-chart-3";
 	import TableProperties from "@lucide/svelte/icons/table-properties";
+	import ShieldCheck from "@lucide/svelte/icons/shield-check";
 	import Logo from "$lib/components/ui/logo/logo.svelte";
 	import type { ComponentProps } from "svelte";
 
@@ -36,6 +37,12 @@
 			url: "/datasources",
 			icon: Database,
 			active: currentPath.startsWith("/datasources")
+		},
+		{
+			title: "Quality Rules",
+			url: "/rules",
+			icon: ShieldCheck,
+			active: currentPath.startsWith("/rules")
 		},
 		{
 			title: "Settings",

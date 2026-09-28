@@ -47,6 +47,23 @@ export {
 	getBatchLogHistory,
 } from "./api/logs";
 
+export {
+	getQualityRules,
+	getQualityRuleById,
+	getQualityRulesByDataset,
+	createQualityRule,
+	updateQualityRule,
+	toggleQualityRule,
+	deleteQualityRule,
+} from "./api/rules";
+export type {
+	QualityRule,
+	RuleCategory,
+	RuleSeverity,
+	CreateQualityRulePayload,
+	UpdateQualityRulePayload,
+} from "./api/rules";
+
 export type {
 	Datasource,
 	DatasourceStatus,

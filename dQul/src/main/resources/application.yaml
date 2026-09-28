@@ -6,7 +6,7 @@ spring:
     url: ${DQUL_DATABASE_URL}
     username: ${DQUL_DATABASE_USERNAME}
     password: ${DQUL_DATABASE_PASSWORD}
-    driver-class-name: ${DATABASE_DRIVER}
+    driver-class-name: ${DATABASE_DRIVER:org.postgresql.Driver}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5

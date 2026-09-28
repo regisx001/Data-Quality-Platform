@@ -69,10 +69,12 @@ public class QualityRule {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dataset_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"qualityRules", "datasource", "columns", "validations"})
     private Dataset dataset;
 
     @OneToMany(mappedBy = "qualityRule", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties("qualityRule")
     private List<Finding> findings = new ArrayList<>();
 
     public void addFinding(Finding finding) {

@@ -1,84 +1,61 @@
-import { error, fail, redirect } from "@sveltejs/kit";
+import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
-import { getDatasetById, getDatasetPreview, profileDataset, deleteDataset } from "$lib/server/api/dataset";
 import {
-	getQualityRulesByDataset,
+	getQualityRules,
 	createQualityRule,
 	updateQualityRule,
 	toggleQualityRule,
 	deleteQualityRule,
+	getDatasources,
 	type RuleCategory,
 	type RuleSeverity,
 } from "$lib/server/api";
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || !locals.token) {
 		throw redirect(303, "/login");
 	}
 
-	const [dataset, rules] = await Promise.all([
-		getDatasetById(locals.token, params.id),
-		getQualityRulesByDataset(locals.token, params.id),
+	const datasetFilter = url.searchParams.get("datasetId") || undefined;
+	const categoryFilter = url.searchParams.get("category") || "ALL";
+	const severityFilter = url.searchParams.get("severity") || "ALL";
+	const enabledParam = url.searchParams.get("enabled");
+	const enabledFilter = enabledParam !== null && enabledParam !== "ALL" ? enabledParam === "true" : undefined;
+
+	const [rules, datasources] = await Promise.all([
+		getQualityRules(locals.token, {
+			datasetId: datasetFilter && datasetFilter !== "ALL" ? datasetFilter : undefined,
+			category: categoryFilter !== "ALL" ? categoryFilter : undefined,
+			severity: severityFilter !== "ALL" ? severityFilter : undefined,
+			enabled: enabledFilter,
+		}),
+		getDatasources(locals.token),
 	]);
 
-	const preview = dataset ? await getDatasetPreview(locals.token, params.id, 50) : null;
+	const availableDatasets = datasources.flatMap((ds) =>
+		(ds.datasets || []).map((d) => ({
+			id: d.id,
+			name: d.name,
+			datasourceName: ds.name,
+			datasourceType: ds.type,
+		}))
+	);
 
 	return {
-		dataset,
-		preview,
 		rules,
-		id: params.id,
+		availableDatasets,
+		currentFilters: {
+			datasetId: datasetFilter || "ALL",
+			category: categoryFilter,
+			severity: severityFilter,
+			enabled: enabledParam || "ALL",
+		},
 		user: locals.user,
 	};
 };
 
 export const actions: Actions = {
-	profile: async ({ locals, params }) => {
-		if (!locals.user || !locals.token) {
-			throw redirect(303, "/login");
-		}
-
-		const result = await profileDataset(locals.token, params.id);
-
-		if (!result.ok) {
-			return fail(400, {
-				error: result.error,
-				action: "profile",
-			});
-		}
-
-		return {
-			success: true,
-			message: "Dataset profiling is running and will be notified !",
-			dataset: result.data,
-		};
-	},
-
-	delete: async ({ locals, params }) => {
-		if (!locals.user || !locals.token) {
-			throw redirect(303, "/login");
-		}
-
-		const dataset = await getDatasetById(locals.token, params.id);
-		const datasourceId = dataset?.datasourceId;
-
-		const result = await deleteDataset(locals.token, params.id);
-
-		if (!result.ok) {
-			return fail(400, {
-				error: result.error || "Failed to delete dataset",
-				action: "delete",
-			});
-		}
-
-		if (datasourceId) {
-			throw redirect(303, `/datasources/${datasourceId}`);
-		} else {
-			throw redirect(303, "/datasources");
-		}
-	},
-
-	createRule: async ({ request, locals, params }) => {
+	createRule: async ({ request, locals }) => {
 		if (!locals.user || !locals.token) {
 			throw redirect(303, "/login");
 		}
@@ -91,12 +68,13 @@ export const actions: Actions = {
 		const expectation = data.get("expectation")?.toString().trim();
 		const target = data.get("target")?.toString().trim();
 		const conditionExpression = data.get("conditionExpression")?.toString().trim() || undefined;
+		const datasetId = data.get("datasetId")?.toString().trim();
 		const enabled = data.get("enabled") !== "false";
 
-		if (!name || !category || !expectation || !target) {
+		if (!name || !category || !expectation || !target || !datasetId) {
 			return fail(400, {
-				error: "Name, Category, Expectation, and Target Column are required.",
-				action: "createRule",
+				error: "Name, Category, Expectation, Target, and Dataset are required.",
+				action: "create",
 			});
 		}
 
@@ -108,21 +86,21 @@ export const actions: Actions = {
 			expectation,
 			target,
 			conditionExpression,
-			datasetId: params.id,
+			datasetId,
 			enabled,
 		});
 
 		if (!result.ok) {
 			return fail(result.status || 400, {
 				error: result.error,
-				action: "createRule",
+				action: "create",
 			});
 		}
 
 		return {
 			success: true,
 			message: `Quality rule '${result.data.name}' created successfully!`,
-			action: "createRule",
+			action: "create",
 		};
 	},
 
@@ -144,8 +122,8 @@ export const actions: Actions = {
 
 		if (!id) {
 			return fail(400, {
-				error: "Rule ID is required.",
-				action: "updateRule",
+				error: "Rule ID is required for updating.",
+				action: "update",
 			});
 		}
 
@@ -163,14 +141,14 @@ export const actions: Actions = {
 		if (!result.ok) {
 			return fail(result.status || 400, {
 				error: result.error,
-				action: "updateRule",
+				action: "update",
 			});
 		}
 
 		return {
 			success: true,
 			message: `Quality rule '${result.data.name}' updated successfully!`,
-			action: "updateRule",
+			action: "update",
 		};
 	},
 
@@ -185,7 +163,7 @@ export const actions: Actions = {
 		if (!id) {
 			return fail(400, {
 				error: "Rule ID is required.",
-				action: "toggleRule",
+				action: "toggle",
 			});
 		}
 
@@ -194,14 +172,14 @@ export const actions: Actions = {
 		if (!result.ok) {
 			return fail(result.status || 400, {
 				error: result.error,
-				action: "toggleRule",
+				action: "toggle",
 			});
 		}
 
 		return {
 			success: true,
 			message: `Rule '${result.data.name}' is now ${result.data.enabled ? "enabled" : "disabled"}.`,
-			action: "toggleRule",
+			action: "toggle",
 		};
 	},
 
@@ -216,7 +194,7 @@ export const actions: Actions = {
 		if (!id) {
 			return fail(400, {
 				error: "Rule ID is required.",
-				action: "deleteRule",
+				action: "delete",
 			});
 		}
 
@@ -225,14 +203,14 @@ export const actions: Actions = {
 		if (!result.ok) {
 			return fail(result.status || 400, {
 				error: result.error,
-				action: "deleteRule",
+				action: "delete",
 			});
 		}
 
 		return {
 			success: true,
 			message: "Quality rule deleted successfully!",
-			action: "deleteRule",
+			action: "delete",
 		};
 	},
 };
